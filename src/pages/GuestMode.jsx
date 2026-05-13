@@ -9,7 +9,7 @@ import { Loader2, LogIn, Save, Sparkles } from 'lucide-react';
 import { auth, db } from '../config/firebase';
 import { useAuth, useStudyData } from '../hooks';
 import { generateFlashcards, persistGeneratedCards } from '../services';
-import { MetaTags } from '../components/ui';
+import { MetaTags, FileUpload } from '../components/ui';
 
 const GuestMode = () => {
   const navigate = useNavigate();
@@ -23,6 +23,7 @@ const GuestMode = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [isFromFile, setIsFromFile] = useState(false);
 
   const validateInput = (text, numCards) => {
     const errors = [];
@@ -56,7 +57,11 @@ const GuestMode = () => {
     return errors;
   };
 
-  const isValid = validateInput(topic, count).length === 0;
+  const handleTextExtracted = (text) => {
+    setTopic(text);
+    setIsFromFile(text.length > 0);
+    setError(null);
+  };
 
   useEffect(() => {
     const loadedDeck = location.state?.loadedDeck;
@@ -166,19 +171,27 @@ const GuestMode = () => {
           <section className="glass-card">
             <h1 className="text-3xl font-heading font-bold">Try it now</h1>
             <p className="text-gray-400 mt-2">
-              Paste any topic to generate flashcards without creating an account.
+              Upload your study materials or paste text to generate flashcards without creating an account.
             </p>
             <div className="mt-6 space-y-4">
+              <FileUpload onTextExtracted={handleTextExtracted} />
               <div>
                 <label htmlFor="topic-text" className="block text-sm font-medium text-gray-300 mb-2">
-                  Topic Content
+                  Topic Content {isFromFile && <span className="text-accent">(from file)</span>}
                 </label>
                 <textarea
                   id="topic-text"
                   value={topic}
-                  onChange={(event) => setTopic(event.target.value)}
-                  placeholder="Paste chapter notes or topic details..."
-                  className="w-full h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent resize-none"
+                  onChange={(event) => {
+                    if (!isFromFile) {
+                      setTopic(event.target.value);
+                    }
+                  }}
+                  placeholder={isFromFile ? "Text extracted from uploaded file..." : "Paste chapter notes or topic details..."}
+                  readOnly={isFromFile}
+                  className={`w-full h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent resize-none ${
+                    isFromFile ? 'cursor-not-allowed opacity-75' : ''
+                  }`}
                 />
                 <div className="flex justify-between items-center mt-2">
                   <div className="text-sm">
