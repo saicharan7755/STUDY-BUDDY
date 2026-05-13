@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA fallback + route AI traffic to the secure serverless handler (no API key in the browser).
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api-ai"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

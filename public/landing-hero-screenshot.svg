@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="t">
+  <title id="t">CRAM AI flashcard study interface preview</title>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#111827"/>
+      <stop offset="100%" style="stop-color:#0a0f1e"/>
+    </linearGradient>
+    <linearGradient id="a" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" rx="16" fill="url(#g)" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+  <rect x="32" y="28" width="896" height="48" rx="10" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.08)"/>
+  <circle cx="56" cy="52" r="8" fill="#ef4444"/>
+  <circle cx="80" cy="52" r="8" fill="#f59e0b"/>
+  <circle cx="104" cy="52" r="8" fill="#10b981"/>
+  <rect x="360" y="40" width="240" height="24" rx="6" fill="rgba(167,139,250,0.35)"/>
+  <rect x="32" y="96" width="260" height="404" rx="12" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)"/>
+  <rect x="52" y="120" width="200" height="14" rx="4" fill="rgba(255,255,255,0.2)"/>
+  <rect x="52" y="148" width="160" height="10" rx="3" fill="rgba(255,255,255,0.12)"/>
+  <rect x="52" y="188" width="200" height="72" rx="8" fill="rgba(124,58,237,0.15)" stroke="rgba(124,58,237,0.4)"/>
+  <rect x="52" y="276" width="200" height="72" rx="8" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)"/>
+  <rect x="52" y="364" width="200" height="72" rx="8" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)"/>
+  <rect x="316" y="96" width="612" height="404" rx="12" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.1)"/>
+  <rect x="340" y="124" width="564" height="320" rx="14" fill="rgba(17,24,39,0.9)" stroke="url(#a)" stroke-width="2"/>
+  <text x="380" y="168" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Front</text>
+  <rect x="380" y="182" width="480" height="36" rx="6" fill="rgba(255,255,255,0.08)"/>
+  <text x="380" y="258" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Back</text>
+  <rect x="380" y="272" width="420" height="36" rx="6" fill="rgba(255,255,255,0.06)"/>
+  <rect x="380" y="340" width="120" height="40" rx="8" fill="#7c3aed"/>
+  <text x="410" y="366" fill="#fff" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Next</text>
+  <rect x="520" y="340" width="100" height="40" rx="8" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)"/>
+  <text x="538" y="366" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="13">Hard</text>
+</svg>
