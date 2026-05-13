@@ -1,4 +1,5 @@
 const GUEST_FLASHCARDS_KEY = 'cram_guest_flashcards_v1';
+const GUEST_STUDY_STATE_KEY = 'cram_guest_study_state_v1';
 
 export const loadGuestFlashcards = () => {
   try {
@@ -24,4 +25,11 @@ export const clearGuestFlashcards = () => {
   localStorage.removeItem(GUEST_FLASHCARDS_KEY);
 };
 
-export { GUEST_FLASHCARDS_KEY };
+export const createGuestStudyState = ({ topic = '', count = 10, cards = [] } = {}) => ({
+  topic,
+  count,
+  cards: Array.isArray(cards) ? cards : [],
+  updatedAt: new Date().toISOString(),
+});
+
+export { GUEST_FLASHCARDS_KEY, GUEST_STUDY_STATE_KEY };

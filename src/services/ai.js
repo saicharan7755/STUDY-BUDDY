@@ -1,5 +1,4 @@
 ﻿import { sanitizeText } from '../../lib/stringSanitize.js';
-import { parseGeminiResponse } from '../constants/prompts.js';
 
 const API_TIMEOUT_MS = 30000;
 
@@ -26,10 +25,14 @@ const postAi = async (endpoint, body) => {
     });
   } catch (e) {
     if (e.name === 'AbortError') {
-      throw new Error('The AI request timed out after 30 seconds. Please try again.');
+      throw new Error('The AI request timed out after 30 seconds. Please try again.', {
+        cause: e,
+      });
     }
     if (e instanceof TypeError) {
-      throw new Error('Network connection error. Check your internet connection and try again.');
+      throw new Error('Network connection error. Check your internet connection and try again.', {
+        cause: e,
+      });
     }
     throw e;
   }

@@ -8,9 +8,15 @@ import {
 } from 'firebase/firestore';
 import { Download, Loader2, LogIn, Save, Sparkles } from 'lucide-react';
 import { auth, db } from '../config/firebase';
-import { useAuth, useStudyData } from '../hooks';
-import { generateFlashcards, persistGeneratedCards } from '../services';
+import { useAuth, useLocalStorage, useStudyData } from '../hooks';
+import {
+  createGuestStudyState,
+  generateFlashcards,
+  GUEST_STUDY_STATE_KEY,
+  persistGeneratedCards,
+} from '../services';
 import { MetaTags, FileUpload, ExportModal } from '../components/ui';
+import { getCharacterCountState, TEXT_LIMITS, validateStudyText } from '../utils';
 import { readFlashcardsFromShareParams } from '../utils/exportUtils';
 
 const GuestMode = () => {
@@ -18,47 +24,21 @@ const GuestMode = () => {
   const location = useLocation();
   const { user, isAuthenticated, signIn } = useAuth();
   const { saveDeck } = useStudyData();
+  const [persistedState, setPersistedState] = useLocalStorage(
+    GUEST_STUDY_STATE_KEY,
+    createGuestStudyState()
+  );
 
-  const [topic, setTopic] = useState('');
-  const [count, setCount] = useState(10);
-  const [cards, setCards] = useState([]);
+  const [topic, setTopic] = useState(persistedState.topic || '');
+  const [count, setCount] = useState(persistedState.count || 10);
+  const [cards, setCards] = useState(
+    Array.isArray(persistedState.cards) ? persistedState.cards : []
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isFromFile, setIsFromFile] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-
-  const validateInput = (text, numCards) => {
-    const errors = [];
-
-    if (!text.trim()) {
-      errors.push('Text cannot be empty');
-    }
-
-    if (text.length < 50) {
-      errors.push('Text must be at least 50 characters long');
-    }
-
-    if (text.length > 10000) {
-      errors.push('Text cannot exceed 10,000 characters');
-    }
-
-    // Check for meaningful content: should have some letters, spaces, and not just symbols/numbers
-    const hasLetters = /[a-zA-Z]/.test(text);
-    const hasSpaces = /\s/.test(text);
-    const wordCount = text.trim().split(/\s+/).length;
-    const symbolRatio = (text.match(/[^a-zA-Z0-9\s]/g) || []).length / text.length;
-
-    if (!hasLetters || !hasSpaces || wordCount < 5 || symbolRatio > 0.5) {
-      errors.push('Text appears to be random or non-meaningful. Please provide coherent content.');
-    }
-
-    if (numCards < 3 || numCards > 50) {
-      errors.push('Number of flashcards must be between 3 and 50');
-    }
-
-    return errors;
-  };
 
   const handleTextExtracted = (text) => {
     setTopic(text);
@@ -72,6 +52,14 @@ const GuestMode = () => {
       const timeoutId = window.setTimeout(() => {
         setTopic(sharedDeck.deckName);
         setCards(sharedDeck.cards);
+        setCount(Math.min(Math.max(sharedDeck.cards.length || 10, 3), 50));
+        setPersistedState(
+          createGuestStudyState({
+            topic: sharedDeck.deckName,
+            count: sharedDeck.cards.length || 10,
+            cards: sharedDeck.cards,
+          })
+        );
       }, 0);
       return () => window.clearTimeout(timeoutId);
     }
@@ -81,13 +69,35 @@ const GuestMode = () => {
       const timeoutId = window.setTimeout(() => {
         setTopic(loadedDeck.name);
         setCards(loadedDeck.cards);
+        setCount(Math.min(Math.max(loadedDeck.cards.length || 10, 3), 50));
+        setPersistedState(
+          createGuestStudyState({
+            topic: loadedDeck.name,
+            count: loadedDeck.cards.length || 10,
+            cards: loadedDeck.cards,
+          })
+        );
       }, 0);
       return () => window.clearTimeout(timeoutId);
     }
-  }, [location.search, location.state]);
+  }, [location.search, location.state, setPersistedState]);
 
   const hasCards = cards.length > 0;
-  const isValid = topic.trim().length >= 50 && topic.length <= 10000 && count >= 3 && count <= 50;
+  const validationErrors = validateStudyText(topic, count);
+  const isValid = validationErrors.length === 0;
+  const charState = getCharacterCountState(topic.length, {
+    min: TEXT_LIMITS.flashcardMin,
+    max: TEXT_LIMITS.flashcardMax,
+  });
+  const charClassName = {
+    danger: 'text-danger',
+    warning: 'text-warning',
+    success: 'text-success',
+  }[charState];
+
+  useEffect(() => {
+    setPersistedState(createGuestStudyState({ topic, count, cards }));
+  }, [cards, count, setPersistedState, topic]);
 
   const sourceText = useMemo(
     () => cards.find((card) => typeof card.sourceText === 'string')?.sourceText || topic.trim(),
@@ -105,9 +115,8 @@ const GuestMode = () => {
   };
 
   const handleGenerate = async () => {
-    const validationErrors = validateInput(topic, count);
     if (validationErrors.length > 0) {
-      setError(validationErrors.join('. '));
+      setError(validationErrors.join(' '));
       return;
     }
 
@@ -128,7 +137,6 @@ const GuestMode = () => {
       }
 
       setCards(generated);
-      // Save as a deck
       saveDeck(topic.trim(), generated);
     } catch (e) {
       setError(e.message || 'Failed to generate flashcards.');
@@ -201,29 +209,40 @@ const GuestMode = () => {
                   onChange={(event) => {
                     if (!isFromFile) {
                       setTopic(event.target.value);
+                      if (error) setError(null);
                     }
                   }}
-                  placeholder={isFromFile ? "Text extracted from uploaded file..." : "Paste chapter notes or topic details..."}
+                  placeholder={
+                    isFromFile
+                      ? 'Text extracted from uploaded file...'
+                      : 'Paste chapter notes or topic details...'
+                  }
                   readOnly={isFromFile}
-                  className={`w-full h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent resize-none ${
+                  maxLength={TEXT_LIMITS.flashcardMax}
+                  className={`w-full min-h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-y transition-all ${
                     isFromFile ? 'cursor-not-allowed opacity-75' : ''
                   }`}
                 />
-                <div className="flex justify-between items-center mt-2">
+                <div className="mt-2 flex flex-col gap-1 text-xs sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-sm">
-                    <span className={`font-medium ${
-                      topic.length < 50 ? 'text-danger' :
-                      topic.length > 8000 ? 'text-warning' :
-                      topic.length > 10000 ? 'text-danger' : 'text-success'
-                    }`}>
+                    <span className={`font-medium ${charClassName}`}>
                       {topic.length.toLocaleString()}
                     </span>
-                    <span className="text-gray-400"> / 10,000 characters</span>
+                    <span className="text-gray-400">
+                      {' '}
+                      / {TEXT_LIMITS.flashcardMax.toLocaleString()} characters
+                    </span>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Min: 50 chars • Max: 10,000 chars
+                  <div className="text-gray-500">
+                    Min: {TEXT_LIMITS.flashcardMin} chars - Max:{' '}
+                    {TEXT_LIMITS.flashcardMax.toLocaleString()} chars
                   </div>
                 </div>
+                {!isValid && topic.length > 0 && (
+                  <p className="mt-2 text-xs text-warning" role="status">
+                    {validationErrors[0]}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="card-count" className="block text-sm font-medium text-gray-300 mb-2">
@@ -235,8 +254,10 @@ const GuestMode = () => {
                   onChange={(event) => setCount(Number(event.target.value))}
                   className="w-full bg-surface/50 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-accent"
                 >
-                  {[3,5,7,10,15,20,25,30,35,40,45,50].map(num => (
-                    <option key={num} value={num}>{num} flashcards</option>
+                  {[3, 5, 7, 10, 15, 20, 25, 30, 35, 40, 45, 50].map((num) => (
+                    <option key={num} value={num}>
+                      {num} flashcards
+                    </option>
                   ))}
                 </select>
               </div>

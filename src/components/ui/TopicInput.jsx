@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Sparkles, Loader2, UploadCloud, X } from 'lucide-react';
 import clsx from 'clsx';
+import { TEXT_LIMITS, validateSyllabusInput } from '../../utils';
 
 const CATEGORIES = ['Science', 'Math', 'History', 'Computer Science', 'Literature', 'Custom'];
 const TIMES = [
@@ -21,17 +22,6 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
   const [validationError, setValidationError] = useState('');
   const fileInputRef = useRef(null);
 
-  const getValidationError = (currentSyllabus, currentImage) => {
-    const trimmed = (currentSyllabus || '').trim();
-    if (!trimmed && !currentImage) {
-      return 'Please paste a syllabus or upload a course image.';
-    }
-    if (!currentImage && trimmed.length < 10) {
-      return 'Your syllabus should be at least 10 characters.';
-    }
-    return '';
-  };
-
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -45,7 +35,7 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
         const base64Data = reader.result.split(',')[1];
         const newImage = { data: base64Data, mimeType: file.type, name: file.name };
         setImage(newImage);
-        setValidationError(getValidationError(syllabus, newImage));
+        setValidationError(validateSyllabusInput(syllabus, newImage));
       };
       reader.readAsDataURL(file);
     }
@@ -54,12 +44,12 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
   const removeImage = () => {
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    setValidationError(getValidationError(syllabus, null));
+    setValidationError(validateSyllabusInput(syllabus, null));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const error = getValidationError(syllabus, image);
+    const error = validateSyllabusInput(syllabus, image);
     if (error) {
       setValidationError(error);
       return;
@@ -68,7 +58,7 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
     onSubmit({ syllabus, category, time, difficulty, image });
   };
 
-  const isFormValid = !getValidationError(syllabus, image);
+  const isFormValid = !validateSyllabusInput(syllabus, image);
 
   return (
     <form onSubmit={handleSubmit} className="glass-card flex flex-col gap-6">
@@ -106,7 +96,7 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
           onChange={(e) => {
             setSyllabus(e.target.value);
             if (validationError) {
-              setValidationError(getValidationError(e.target.value, image));
+              setValidationError(validateSyllabusInput(e.target.value, image));
             }
           }}
           placeholder={
@@ -115,11 +105,13 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
               : 'Paste your syllabus, chapter names, or a list of topics here...'
           }
           className="w-full h-32 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all resize-y"
-          maxLength={5000}
+          maxLength={TEXT_LIMITS.syllabusMax}
         />
         <div className="flex justify-between text-xs text-gray-500">
-          <span>{image ? 'Image attached' : 'Minimum 10 characters'}</span>
-          <span>{syllabus.length}/5000</span>
+          <span>{image ? 'Image attached' : `Minimum ${TEXT_LIMITS.syllabusMin} characters`}</span>
+          <span>
+            {syllabus.length.toLocaleString()}/{TEXT_LIMITS.syllabusMax.toLocaleString()}
+          </span>
         </div>
         {validationError && (
           <p className="text-sm text-danger-light mt-1" role="alert">
