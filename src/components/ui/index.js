@@ -1,5 +1,6 @@
 export { default as AnimatedCounter } from './AnimatedCounter';
 export { default as ErrorBoundary } from './ErrorBoundary';
+export { default as ExportModal } from './ExportModal';
 export { default as FileUpload } from './FileUpload';
 export { default as Footer } from './Footer';
 export { default as LandingFaq } from './LandingFaq';

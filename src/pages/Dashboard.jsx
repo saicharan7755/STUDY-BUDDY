@@ -12,10 +12,20 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth, useSpacedRepetition, useStudyData } from '../hooks';
-import { TopicInput, MetaTags } from '../components/ui';
+import { TopicInput, MetaTags, ExportModal } from '../components/ui';
 import { generateStudyPlan } from '../services';
 import { buildLast7DaysSeries } from '../services/streakService';
-import { BookOpen, Clock, ChevronRight, Target, Flame, Trash2, Play, Layers3 } from 'lucide-react';
+import {
+  BookOpen,
+  Clock,
+  ChevronRight,
+  Download,
+  Target,
+  Flame,
+  Trash2,
+  Play,
+  Layers3,
+} from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -32,6 +42,7 @@ const Dashboard = () => {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [exportDeck, setExportDeck] = useState(null);
 
   const _loadSessions = useCallback(async () => {
     if (!user?.uid) return;
@@ -307,6 +318,13 @@ const Dashboard = () => {
                     </div>
                     <div className="flex gap-2">
                       <button
+                        onClick={() => setExportDeck(deck)}
+                        className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-accent-light transition-colors"
+                        title="Export Deck"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => {
                           const loadedDeck = loadDeck(deck.id);
                           if (loadedDeck) {
@@ -333,6 +351,12 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      <ExportModal
+        isOpen={Boolean(exportDeck)}
+        onClose={() => setExportDeck(null)}
+        cards={exportDeck?.cards || []}
+        deckName={exportDeck?.name || 'Saved Deck'}
+      />
     </>
   );
 };

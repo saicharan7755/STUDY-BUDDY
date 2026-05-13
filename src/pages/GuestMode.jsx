@@ -6,17 +6,18 @@ import {
   collection as firestoreCollection,
   serverTimestamp as firestoreServerTimestamp,
 } from 'firebase/firestore';
-import { Loader2, LogIn, Save, Sparkles } from 'lucide-react';
+import { Download, Loader2, LogIn, Save, Sparkles } from 'lucide-react';
 import { auth, db } from '../config/firebase';
 import { useAuth, useStudyData } from '../hooks';
 import { generateFlashcards, persistGeneratedCards } from '../services';
-import { MetaTags, FileUpload } from '../components/ui';
+import { MetaTags, FileUpload, ExportModal } from '../components/ui';
+import { readFlashcardsFromShareParams } from '../utils/exportUtils';
 
 const GuestMode = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, signIn } = useAuth();
-  const { saveDeck, loadDeck } = useStudyData();
+  const { saveDeck } = useStudyData();
 
   const [topic, setTopic] = useState('');
   const [count, setCount] = useState(10);
@@ -25,6 +26,7 @@ const GuestMode = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isFromFile, setIsFromFile] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const validateInput = (text, numCards) => {
     const errors = [];
@@ -65,12 +67,24 @@ const GuestMode = () => {
   };
 
   useEffect(() => {
+    const sharedDeck = readFlashcardsFromShareParams(location.search);
+    if (sharedDeck?.cards?.length) {
+      const timeoutId = window.setTimeout(() => {
+        setTopic(sharedDeck.deckName);
+        setCards(sharedDeck.cards);
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+
     const loadedDeck = location.state?.loadedDeck;
     if (loadedDeck) {
-      setTopic(loadedDeck.name);
-      setCards(loadedDeck.cards);
+      const timeoutId = window.setTimeout(() => {
+        setTopic(loadedDeck.name);
+        setCards(loadedDeck.cards);
+      }, 0);
+      return () => window.clearTimeout(timeoutId);
     }
-  }, [location.state]);
+  }, [location.search, location.state]);
 
   const hasCards = cards.length > 0;
   const isValid = topic.trim().length >= 50 && topic.length <= 10000 && count >= 3 && count <= 50;
@@ -280,6 +294,16 @@ const GuestMode = () => {
                   </>
                 )}
               </motion.button>
+              <motion.button
+                type="button"
+                disabled={!hasCards}
+                onClick={() => setIsExportOpen(true)}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-5 py-3 font-semibold text-accent-light hover:bg-accent/20 disabled:opacity-60 disabled:cursor-not-allowed touch-target"
+                whileHover={!hasCards ? {} : { scale: 1.02 }}
+                whileTap={!hasCards ? {} : { scale: 0.97 }}
+              >
+                <Download className="h-4 w-4" /> Export
+              </motion.button>
             </div>
           </section>
 
@@ -340,6 +364,12 @@ const GuestMode = () => {
           </section>
         </div>
       </div>
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        cards={cards}
+        deckName={topic.trim() || 'Guest Flashcards'}
+      />
     </>
   );
 };
