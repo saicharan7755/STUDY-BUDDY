@@ -83,18 +83,29 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
           isFlipped && 'flipped'
         )}
         onClick={handleFlip}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          handleFlip();
+        }}
+        role="button"
+        tabIndex={0}
+        aria-label="Flip card"
       >
         <div className="w-full h-full transform-style-3d absolute">
           {/* Front */}
           <div className="absolute inset-0 backface-hidden card-front glass-card bg-surface/80 flex flex-col items-center justify-center p-8 border-2 border-white/5 hover:border-accent/30 text-center">
             <button
-              onClick={(e) => speakText(card.front, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                speakText(card.front, e);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
               title="Listen"
             >
               <Volume2 className="w-5 h-5" />
             </button>
-            <h3 className="text-2xl md:text-3xl font-heading font-semibold text-white">
+            <h3 className="text-2xl md:text-3xl font-heading font-semibold text-white break-words">
               {card.front}
             </h3>
             <span className="absolute bottom-4 text-xs text-gray-500 font-medium tracking-widest uppercase">
@@ -105,13 +116,17 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
           {/* Back */}
           <div className="absolute inset-0 backface-hidden card-back glass-card bg-accent/10 flex flex-col items-center justify-center p-8 border-2 border-accent/40 text-center">
             <button
-              onClick={(e) => speakText(card.back, e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                speakText(card.back, e);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
               title="Listen"
             >
               <Volume2 className="w-5 h-5" />
             </button>
-            <p className="text-xl md:text-2xl font-sans text-gray-100 leading-relaxed overflow-y-auto">
+            <p className="text-xl md:text-2xl font-sans text-gray-100 leading-relaxed overflow-y-auto break-words">
               {card.back}
             </p>
           </div>
@@ -122,7 +137,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
       <div className="flex items-center justify-between w-full mt-8 px-4">
         <button
           onClick={shuffle}
-          className="p-3 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          className="p-3 min-h-[44px] min-w-[44px] rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors touch-target"
           title="Shuffle"
         >
           <Shuffle className="w-5 h-5" />
@@ -132,7 +147,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
           <button
             onClick={prevCard}
             disabled={currentIndex === 0}
-            className="p-3 rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="p-3 min-h-[44px] min-w-[44px] rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-target"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -144,7 +159,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
           <button
             onClick={nextCard}
             disabled={currentIndex === shuffledCards.length - 1}
-            className="p-3 rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="p-3 min-h-[44px] min-w-[44px] rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-target"
           >
             <ArrowRight className="w-5 h-5" />
           </button>
@@ -152,7 +167,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
 
         <button
           onClick={() => setIsFlipped(false)}
-          className="p-3 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+          className="p-3 min-h-[44px] min-w-[44px] rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors touch-target"
           title="Reset Flip"
         >
           <Undo2 className="w-5 h-5" />
@@ -167,7 +182,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
               disabled={isSavingGrade}
               onClick={() => onGrade(card, action.id)}
               className={clsx(
-                'rounded-xl border px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-50',
+                'rounded-xl border px-4 py-3 min-h-[44px] text-sm font-semibold leading-none transition-colors disabled:opacity-50 touch-target',
                 action.className
               )}
             >

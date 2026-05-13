@@ -143,10 +143,27 @@
 /* Perspective for 3D flip */
 .perspective-1000 {
   perspective: 1000px;
+  touch-action: manipulation;
+}
+
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .transform-style-3d {
   transform-style: preserve-3d;
+}
+
+@media (max-width: 768px) {
+  .glass-card {
+    padding: 1.25rem;
+  }
+
+  .nav-landing {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .backface-hidden {

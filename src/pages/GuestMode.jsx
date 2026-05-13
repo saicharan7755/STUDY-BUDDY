@@ -237,12 +237,12 @@ const GuestMode = () => {
                 </button>
               </div>
             )}
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 disabled={isLoading || !isValid}
                 onClick={handleGenerate}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors touch-target"
               >
                 {isLoading ? (
                   <>
@@ -258,7 +258,7 @@ const GuestMode = () => {
                 type="button"
                 disabled={!hasCards || isSaving}
                 onClick={handleSaveToAccount}
-                className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-white hover:bg-white/10 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-white hover:bg-white/10 disabled:opacity-60 touch-target"
               >
                 {isSaving ? (
                   <>
@@ -279,10 +279,10 @@ const GuestMode = () => {
 
           <section className="glass-card">
             <h2 className="text-xl font-heading font-bold">Preview cards</h2>
-            <div className="mt-4 space-y-3 max-h-[28rem] overflow-y-auto pr-1">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[28rem] overflow-y-auto pr-1">
               {hasCards ? (
                 cards.map((card) => (
-                  <article key={card.id} className="rounded-xl border border-white/10 bg-surface/40 p-4">
+                  <article key={card.id} className="rounded-xl border border-white/10 bg-surface/40 p-4 break-words">
                     <p className="text-xs uppercase tracking-wider text-gray-500">Front</p>
                     <p className="text-sm font-semibold text-white">{card.front}</p>
                     <p className="mt-3 text-xs uppercase tracking-wider text-gray-500">Back</p>

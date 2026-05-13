@@ -697,19 +697,19 @@ const StudySession = () => {
                               </div>
                             )}
                           </div>
-                          <div className="p-4 border-t border-white/10 bg-surface/50 flex gap-3">
+                          <div className="p-4 border-t border-white/10 bg-surface/50 flex flex-col gap-3 sm:flex-row sm:items-center">
                             <input
                               type="text"
                               value={chatInput}
                               onChange={(e) => setChatInput(e.target.value)}
                               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                               placeholder="Ask a question..."
-                              className="flex-1 bg-midnight border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-accent text-sm"
+                              className="min-w-0 flex-1 w-full bg-midnight border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-accent text-sm"
                             />
                             <button
                               onClick={handleSendMessage}
                               disabled={isChatting || !chatInput.trim()}
-                              className="bg-accent hover:bg-accent-light px-4 rounded-xl flex items-center justify-center disabled:opacity-50 transition-colors"
+                              className="min-h-[44px] min-w-[44px] bg-accent hover:bg-accent-light px-4 rounded-xl flex items-center justify-center disabled:opacity-50 transition-colors touch-target"
                             >
                               <Send className="w-5 h-5" />
                             </button>

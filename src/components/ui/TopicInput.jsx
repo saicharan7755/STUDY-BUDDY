@@ -179,7 +179,7 @@ const TopicInput = ({ onSubmit, isGenerating }) => {
         type="submit"
         disabled={!isFormValid || isGenerating}
         className={clsx(
-          'mt-4 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all duration-300',
+          'mt-4 w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all duration-300 min-h-[44px] touch-target',
           !isFormValid || isGenerating
             ? 'bg-surface/80 text-gray-500 cursor-not-allowed border border-white/5'
             : 'bg-accent hover:bg-accent-light text-white shadow-lg hover:shadow-accent/30 animate-pulse-glow'
