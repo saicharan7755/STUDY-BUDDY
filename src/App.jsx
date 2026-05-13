@@ -6,6 +6,7 @@ import Landing from './pages/Landing';
 import { Loader2 } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StudyProgressDashboard = lazy(() => import('./pages/StudyProgressDashboard'));
 const StudySession = lazy(() => import('./pages/StudySession'));
 const GuestMode = lazy(() => import('./pages/GuestMode'));
 const NotFound = lazy(() => import('./pages/NotFound'));
@@ -55,6 +56,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/progress"
+                element={
+                  <ProtectedRoute>
+                    <StudyProgressDashboard />
                   </ProtectedRoute>
                 }
               />

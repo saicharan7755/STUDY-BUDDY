@@ -18,9 +18,10 @@ import {
   fetchDueCardsForTopic,
   persistGeneratedCards,
   updateCardReview,
+  recordFlashcardResult,
+  recordStudySessionStart,
 } from '../services';
 import { calculateNextReview, gradeToQuality } from '../utils';
-import { recordStudyActivity } from '../services';
 import {
   ChevronLeft,
   Loader2,
@@ -110,6 +111,9 @@ const StudySession = () => {
   // Chat state
   const [chatInput, setChatInput] = useState('');
   const [isChatting, setIsChatting] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ correct: 0, attempted: 0 });
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [hasShownSummary, setHasShownSummary] = useState(false);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -156,6 +160,11 @@ const StudySession = () => {
 
     loadSession();
   }, [id, user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid || !session?.id) return;
+    recordStudySessionStart(user.uid, session.id);
+  }, [user?.uid, session?.id]);
 
   // Save session to local storage for offline resilience
   useEffect(() => {
@@ -255,7 +264,12 @@ const StudySession = () => {
         srsUpdate,
       });
 
-      await recordStudyActivity(user.uid);
+      const isCorrect = grade !== 'again';
+      recordFlashcardResult(user.uid, activeTopic?.title || activeTopic?.id, isCorrect);
+      setSessionStats((prev) => ({
+        correct: prev.correct + (isCorrect ? 1 : 0),
+        attempted: prev.attempted + 1,
+      }));
 
       const dueCards = await fetchDueCardsForTopic({
         uid: user.uid,
@@ -380,6 +394,11 @@ const StudySession = () => {
 
       setSession(updatedSession);
       showToast('Topic marked complete!', 'success');
+
+      if (newPercentage === 100 && !hasShownSummary) {
+        setShowSummaryModal(true);
+        setHasShownSummary(true);
+      }
 
       // Save to Firebase
       try {
@@ -750,6 +769,49 @@ const StudySession = () => {
             })}
           </div>
         </div>
+
+        {showSummaryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+            <div className="w-full max-w-2xl rounded-[32px] border border-white/10 bg-midnight/95 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.3em] text-accent font-semibold">Session complete</p>
+                  <h2 className="mt-3 text-3xl font-heading font-bold text-white">Great work, champion.</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSummaryModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3 mb-6">
+                <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Reviewed</p>
+                  <p className="mt-3 text-3xl font-heading font-bold">{sessionStats.attempted}</p>
+                  <p className="text-xs text-gray-500 mt-1">cards this session</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Correct</p>
+                  <p className="mt-3 text-3xl font-heading font-bold">{sessionStats.correct}</p>
+                  <p className="text-xs text-gray-500 mt-1">responses</p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Accuracy</p>
+                  <p className="mt-3 text-3xl font-heading font-bold">
+                    {sessionStats.attempted ? Math.round((sessionStats.correct / sessionStats.attempted) * 100) : 0}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">session average</p>
+                </div>
+              </div>
+              <div className="rounded-[28px] border border-white/10 bg-surface/60 p-6">
+                <p className="text-sm text-gray-400">You completed all topics in this session. Keep your streak alive by starting another session or reviewing a topic again.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {toast && (
           <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
         )}

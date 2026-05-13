@@ -107,12 +107,20 @@ const Navbar = () => {
 
         <div className="hidden items-center gap-3 md:flex">
           {isAuthenticated && (
-            <Link
-              to="/dashboard"
-              className="text-sm font-medium text-gray-300 transition-colors hover:text-accent-light"
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium text-gray-300 transition-colors hover:text-accent-light"
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/progress"
+                className="text-sm font-medium text-gray-300 transition-colors hover:text-accent-light"
+              >
+                Progress
+              </Link>
+            </>
           )}
           {!isAuthenticated && (
             <button
@@ -218,6 +226,13 @@ const Navbar = () => {
                 onClick={() => setMobileOpen(false)}
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/progress"
+                className="rounded-lg px-3 py-3 text-base font-medium text-gray-200 hover:bg-white/5"
+                onClick={() => setMobileOpen(false)}
+              >
+                Progress
               </Link>
               <button
                 type="button"
