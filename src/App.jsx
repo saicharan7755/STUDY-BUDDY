@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks';
 import { Navbar, Footer, ErrorBoundary } from './components/ui';
 import Landing from './pages/Landing';
@@ -27,6 +28,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   const { loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -48,35 +50,46 @@ function App() {
               </div>
             }
           >
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/try" element={<GuestMode />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/progress"
-                element={
-                  <ProtectedRoute>
-                    <StudyProgressDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/session/:id"
-                element={
-                  <ProtectedRoute>
-                    <StudySession />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                className="flex min-h-full flex-1 flex-col"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+              >
+                <Routes location={location}>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/try" element={<GuestMode />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/progress"
+                    element={
+                      <ProtectedRoute>
+                        <StudyProgressDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/session/:id"
+                    element={
+                      <ProtectedRoute>
+                        <StudySession />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
           </Suspense>
         </ErrorBoundary>
       </main>

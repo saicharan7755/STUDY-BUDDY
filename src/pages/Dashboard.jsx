@@ -13,7 +13,8 @@ import {
 import { db } from '../config/firebase';
 import { useAuth, useStudyData } from '../hooks';
 import { TopicInput, MetaTags } from '../components/ui';
-import { generateStudyPlan, buildLast7DaysSeries } from '../services';
+import { generateStudyPlan } from '../services';
+import { buildLast7DaysSeries } from '../services/streakService';
 import { BookOpen, Clock, ChevronRight, Target, Flame, Trash2, Play } from 'lucide-react';
 
 const Dashboard = () => {

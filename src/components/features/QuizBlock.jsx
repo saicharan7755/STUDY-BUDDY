@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
+import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
 const QuizBlock = ({ questions, onGenerateMore }) => {
@@ -32,7 +33,13 @@ const QuizBlock = ({ questions, onGenerateMore }) => {
         const selectedOption = answers[i];
 
         return (
-          <div key={q.id || i} className="glass-card flex flex-col gap-4">
+          <motion.div
+            key={q.id || i}
+            className="glass-card flex flex-col gap-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, delay: i * 0.04 }}
+          >
             <h4 className="text-lg font-medium">
               <span className="text-accent-light mr-2 font-heading">{i + 1}.</span>
               {q.question}
@@ -57,13 +64,21 @@ const QuizBlock = ({ questions, onGenerateMore }) => {
                 }
 
                 return (
-                  <div
+                  <motion.div
                     key={optIndex}
                     onClick={() => handleSelect(i, opt)}
                     className={clsx(
                       'p-4 rounded-xl border transition-all duration-200 flex items-center justify-between',
                       optionClass
                     )}
+                    animate={
+                      showResults && isSelected && !isCorrect
+                        ? { x: [0, -8, 8, -5, 5, 0] }
+                        : { x: 0 }
+                    }
+                    transition={{ duration: 0.26 }}
+                    whileHover={!showResults ? { scale: 1.01 } : {}}
+                    whileTap={!showResults ? { scale: 0.98 } : {}}
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-6 h-6 rounded bg-black/20 flex items-center justify-center text-xs font-bold text-gray-400">
@@ -75,7 +90,7 @@ const QuizBlock = ({ questions, onGenerateMore }) => {
                     {showResults && isSelected && !isCorrect && (
                       <XCircle className="w-5 h-5 text-danger" />
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -94,21 +109,52 @@ const QuizBlock = ({ questions, onGenerateMore }) => {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
         );
       })}
 
       <div className="flex flex-col items-center gap-4 mt-6">
         {!showResults ? (
-          <button
+          <motion.button
             onClick={handleSubmit}
             disabled={Object.keys(answers).length < questions.length}
             className="bg-accent hover:bg-accent-light text-white font-bold py-3 px-8 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-accent/25"
+            whileHover={Object.keys(answers).length < questions.length ? {} : { scale: 1.03 }}
+            whileTap={Object.keys(answers).length < questions.length ? {} : { scale: 0.97 }}
           >
             Submit Answers
-          </button>
+          </motion.button>
         ) : (
-          <div className="glass-card w-full text-center py-8 bg-surface/80 flex flex-col items-center gap-4 border-accent/20">
+          <motion.div
+            className="glass-card w-full text-center py-8 bg-surface/80 flex flex-col items-center gap-4 border-accent/20 relative overflow-hidden"
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+          >
+            {score === questions.length && (
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {[...Array(12)].map((_, index) => (
+                  <motion.span
+                    key={index}
+                    className="absolute h-2 w-2 rounded-full bg-accent-light"
+                    style={{
+                      left: `${15 + ((index * 7) % 70)}%`,
+                      top: '42%',
+                    }}
+                    initial={{ opacity: 0, y: 0, scale: 0.4 }}
+                    animate={{ opacity: [0, 1, 0], y: [-4, -36 - (index % 4) * 8], scale: [0.4, 1, 0.8] }}
+                    transition={{ duration: 0.28, delay: index * 0.015 }}
+                  />
+                ))}
+              </div>
+            )}
+            <motion.div
+              initial={{ scale: 0.8, y: 4 }}
+              animate={{ scale: [0.8, 1.12, 1], y: [4, -4, 0] }}
+              transition={{ duration: 0.28 }}
+            >
+              <CheckCircle2 className="h-10 w-10 text-success" />
+            </motion.div>
             <h3 className="text-2xl font-heading font-bold">
               You scored <span className="text-accent text-3xl">{score}</span> out of{' '}
               {questions.length}
@@ -121,22 +167,26 @@ const QuizBlock = ({ questions, onGenerateMore }) => {
                   : 'Keep reviewing, active recall takes practice.'}
             </p>
             <div className="flex gap-4 mt-4">
-              <button
+              <motion.button
                 onClick={handleReset}
                 className="flex items-center gap-2 px-6 py-2 rounded-full border border-white/20 hover:bg-white/10 transition-colors text-sm"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
               >
                 <RotateCcw className="w-4 h-4" /> Retake
-              </button>
+              </motion.button>
               {onGenerateMore && (
-                <button
+                <motion.button
                   onClick={onGenerateMore}
                   className="bg-white/10 hover:bg-accent px-6 py-2 rounded-full text-sm font-medium transition-colors"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   Generate More Questions
-                </button>
+                </motion.button>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

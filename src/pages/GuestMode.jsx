@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   addDoc,
   collection as firestoreCollection,
@@ -72,6 +73,7 @@ const GuestMode = () => {
   }, [location.state]);
 
   const hasCards = cards.length > 0;
+  const isValid = topic.trim().length >= 50 && topic.length <= 10000 && count >= 3 && count <= 50;
 
   const sourceText = useMemo(
     () => cards.find((card) => typeof card.sourceText === 'string')?.sourceText || topic.trim(),
@@ -238,11 +240,13 @@ const GuestMode = () => {
               </div>
             )}
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <button
+              <motion.button
                 type="button"
                 disabled={isLoading || !isValid}
                 onClick={handleGenerate}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors touch-target"
+                whileHover={isLoading || !isValid ? {} : { scale: 1.02 }}
+                whileTap={isLoading || !isValid ? {} : { scale: 0.97 }}
               >
                 {isLoading ? (
                   <>
@@ -253,12 +257,14 @@ const GuestMode = () => {
                     <Sparkles className="h-4 w-4" /> Generate flashcards
                   </>
                 )}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 disabled={!hasCards || isSaving}
                 onClick={handleSaveToAccount}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-semibold text-white hover:bg-white/10 disabled:opacity-60 touch-target"
+                whileHover={!hasCards || isSaving ? {} : { scale: 1.02 }}
+                whileTap={!hasCards || isSaving ? {} : { scale: 0.97 }}
               >
                 {isSaving ? (
                   <>
@@ -273,21 +279,59 @@ const GuestMode = () => {
                     <LogIn className="h-4 w-4" /> Sign in & save
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </section>
 
           <section className="glass-card">
             <h2 className="text-xl font-heading font-bold">Preview cards</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[28rem] overflow-y-auto pr-1">
-              {hasCards ? (
-                cards.map((card) => (
-                  <article key={card.id} className="rounded-xl border border-white/10 bg-surface/40 p-4 break-words">
+              {isLoading ? (
+                [...Array(Math.min(count, 6))].map((_, index) => (
+                  <motion.div
+                    key={index}
+                    className="rounded-xl border border-white/10 bg-surface/40 p-4"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.04 }}
+                  >
+                    <motion.div
+                      className="mb-3 h-3 w-16 rounded-full bg-white/10"
+                      animate={{ opacity: [0.35, 0.8, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <motion.div
+                      className="h-4 w-4/5 rounded-full bg-white/10"
+                      animate={{ opacity: [0.35, 0.8, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut', delay: 0.05 }}
+                    />
+                    <motion.div
+                      className="mb-3 mt-5 h-3 w-14 rounded-full bg-white/10"
+                      animate={{ opacity: [0.35, 0.8, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut', delay: 0.1 }}
+                    />
+                    <motion.div
+                      className="h-4 w-full rounded-full bg-white/10"
+                      animate={{ opacity: [0.35, 0.8, 0.35] }}
+                      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut', delay: 0.15 }}
+                    />
+                  </motion.div>
+                ))
+              ) : hasCards ? (
+                cards.map((card, index) => (
+                  <motion.article
+                    key={card.id}
+                    className="rounded-xl border border-white/10 bg-surface/40 p-4 break-words"
+                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.22, delay: index * 0.045, ease: 'easeOut' }}
+                    whileHover={{ y: -2 }}
+                  >
                     <p className="text-xs uppercase tracking-wider text-gray-500">Front</p>
                     <p className="text-sm font-semibold text-white">{card.front}</p>
                     <p className="mt-3 text-xs uppercase tracking-wider text-gray-500">Back</p>
                     <p className="text-sm text-gray-300">{card.back}</p>
-                  </article>
+                  </motion.article>
                 ))
               ) : (
                 <p className="text-sm text-gray-500">Generated cards will appear here.</p>

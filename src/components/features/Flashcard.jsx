@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Shuffle, Undo2, Volume2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
 
 const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
@@ -78,10 +79,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     <div className="flex flex-col items-center w-full max-w-2xl mx-auto">
       {/* 3D Scene */}
       <div
-        className={clsx(
-          'relative w-full aspect-[4/3] md:aspect-[16/9] perspective-1000 cursor-pointer',
-          isFlipped && 'flipped'
-        )}
+        className="relative w-full aspect-[4/3] md:aspect-[16/9] perspective-1000 cursor-pointer"
         onClick={handleFlip}
         onTouchEnd={(e) => {
           e.preventDefault();
@@ -91,10 +89,22 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
         tabIndex={0}
         aria-label="Flip card"
       >
-        <div className="w-full h-full transform-style-3d absolute">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={card.id || currentIndex}
+            className="w-full h-full transform-style-3d absolute"
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateY: isFlipped ? 180 : 0 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+            style={{ transformStyle: 'preserve-3d' }}
+          >
           {/* Front */}
-          <div className="absolute inset-0 backface-hidden card-front glass-card bg-surface/80 flex flex-col items-center justify-center p-8 border-2 border-white/5 hover:border-accent/30 text-center">
-            <button
+          <motion.div
+            className="absolute inset-0 backface-hidden glass-card bg-surface/80 flex flex-col items-center justify-center p-8 border-2 border-white/5 hover:border-accent/30 text-center"
+            style={{ backfaceVisibility: 'hidden' }}
+          >
+            <motion.button
               onClick={(e) => {
                 e.stopPropagation();
                 speakText(card.front, e);
@@ -102,20 +112,25 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
               onTouchStart={(e) => e.stopPropagation()}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
               title="Listen"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
             >
               <Volume2 className="w-5 h-5" />
-            </button>
+            </motion.button>
             <h3 className="text-2xl md:text-3xl font-heading font-semibold text-white break-words">
               {card.front}
             </h3>
             <span className="absolute bottom-4 text-xs text-gray-500 font-medium tracking-widest uppercase">
               Click or Space to Flip
             </span>
-          </div>
+          </motion.div>
 
           {/* Back */}
-          <div className="absolute inset-0 backface-hidden card-back glass-card bg-accent/10 flex flex-col items-center justify-center p-8 border-2 border-accent/40 text-center">
-            <button
+          <motion.div
+            className="absolute inset-0 backface-hidden glass-card bg-accent/10 flex flex-col items-center justify-center p-8 border-2 border-accent/40 text-center"
+            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+          >
+            <motion.button
               onClick={(e) => {
                 e.stopPropagation();
                 speakText(card.back, e);
@@ -123,60 +138,71 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
               onTouchStart={(e) => e.stopPropagation()}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
               title="Listen"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.94 }}
             >
               <Volume2 className="w-5 h-5" />
-            </button>
+            </motion.button>
             <p className="text-xl md:text-2xl font-sans text-gray-100 leading-relaxed overflow-y-auto break-words">
               {card.back}
             </p>
-          </div>
-        </div>
+          </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Controls */}
       <div className="flex items-center justify-between w-full mt-8 px-4">
-        <button
+        <motion.button
           onClick={shuffle}
           className="p-3 min-h-[44px] min-w-[44px] rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors touch-target"
           title="Shuffle"
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
         >
           <Shuffle className="w-5 h-5" />
-        </button>
+        </motion.button>
 
         <div className="flex items-center gap-6">
-          <button
+          <motion.button
             onClick={prevCard}
             disabled={currentIndex === 0}
             className="p-3 min-h-[44px] min-w-[44px] rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-target"
+            whileHover={currentIndex === 0 ? {} : { scale: 1.06 }}
+            whileTap={currentIndex === 0 ? {} : { scale: 0.94 }}
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </motion.button>
 
           <span className="text-sm font-medium font-heading text-gray-300">
             {currentIndex + 1} / {shuffledCards.length}
           </span>
 
-          <button
+          <motion.button
             onClick={nextCard}
             disabled={currentIndex === shuffledCards.length - 1}
             className="p-3 min-h-[44px] min-w-[44px] rounded-full bg-surface border border-white/10 hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed transition-all touch-target"
+            whileHover={currentIndex === shuffledCards.length - 1 ? {} : { scale: 1.06 }}
+            whileTap={currentIndex === shuffledCards.length - 1 ? {} : { scale: 0.94 }}
           >
             <ArrowRight className="w-5 h-5" />
-          </button>
+          </motion.button>
         </div>
 
-        <button
+        <motion.button
           onClick={() => setIsFlipped(false)}
           className="p-3 min-h-[44px] min-w-[44px] rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors touch-target"
           title="Reset Flip"
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
         >
           <Undo2 className="w-5 h-5" />
-        </button>
+        </motion.button>
       </div>
       {typeof onGrade === 'function' && (
         <div className="mt-6 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
           {gradeActions.map((action) => (
-            <button
+            <motion.button
               key={action.id}
               type="button"
               disabled={isSavingGrade}
@@ -185,9 +211,11 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
                 'rounded-xl border px-4 py-3 min-h-[44px] text-sm font-semibold leading-none transition-colors disabled:opacity-50 touch-target',
                 action.className
               )}
+              whileHover={isSavingGrade ? {} : { y: -2 }}
+              whileTap={isSavingGrade ? {} : { scale: 0.97 }}
             >
               {action.label}
-            </button>
+            </motion.button>
           ))}
         </div>
       )}

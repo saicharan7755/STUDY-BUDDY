@@ -1,5 +1,6 @@
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../hooks';
@@ -46,12 +47,29 @@ const TABS = [
 ];
 
 const LoadingSkeleton = ({ variant }) => {
+  const SkeletonBox = ({ className = '' }) => (
+    <motion.div
+      className={`skeleton-card ${className}`}
+      initial={{ opacity: 0.45 }}
+      animate={{ opacity: [0.45, 0.85, 0.45] }}
+      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+    />
+  );
+  const SkeletonLine = ({ className = '' }) => (
+    <motion.div
+      className={`skeleton-line ${className}`}
+      initial={{ opacity: 0.45 }}
+      animate={{ opacity: [0.45, 0.85, 0.45] }}
+      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+    />
+  );
+
   if (variant === 'summary') {
     return (
       <div className="space-y-4">
-        <div className="skeleton-card p-6" />
-        <div className="skeleton-card p-6" />
-        <div className="skeleton-card p-6" />
+        <SkeletonBox className="p-6" />
+        <SkeletonBox className="p-6" />
+        <SkeletonBox className="p-6" />
       </div>
     );
   }
@@ -59,10 +77,10 @@ const LoadingSkeleton = ({ variant }) => {
   if (variant === 'flashcards') {
     return (
       <div className="space-y-4">
-        <div className="skeleton-card p-8 min-h-[260px]" />
+        <SkeletonBox className="p-8 min-h-[260px]" />
         <div className="grid grid-cols-2 gap-4">
-          <div className="skeleton-card h-32" />
-          <div className="skeleton-card h-32" />
+          <SkeletonBox className="h-32" />
+          <SkeletonBox className="h-32" />
         </div>
       </div>
     );
@@ -73,11 +91,11 @@ const LoadingSkeleton = ({ variant }) => {
       <div className="space-y-4">
         {[...Array(3)].map((_, index) => (
           <div key={index} className="skeleton-card p-5">
-            <div className="skeleton-line w-3/4 mb-4" />
+            <SkeletonLine className="w-3/4 mb-4" />
             <div className="space-y-2">
-              <div className="skeleton-line" />
-              <div className="skeleton-line w-5/6" />
-              <div className="skeleton-line w-2/3" />
+              <SkeletonLine />
+              <SkeletonLine className="w-5/6" />
+              <SkeletonLine className="w-2/3" />
             </div>
           </div>
         ))}
@@ -85,7 +103,7 @@ const LoadingSkeleton = ({ variant }) => {
     );
   }
 
-  return <div className="skeleton-card p-6 min-h-[220px]" />;
+  return <SkeletonBox className="p-6 min-h-[220px]" />;
 };
 
 const StudySession = () => {
@@ -479,12 +497,14 @@ const StudySession = () => {
         {/* Top Bar */}
         <div className="glass border-b border-white/10 px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-4">
-            <button
+            <motion.button
               onClick={() => navigate('/dashboard')}
               className="p-2 rounded-full hover:bg-white/10 transition-colors"
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.94 }}
             >
               <ChevronLeft className="w-6 h-6" />
-            </button>
+            </motion.button>
             <div>
               <h1 className="text-xl font-heading font-bold">{session.subject} Session</h1>
               <p className="text-xs text-gray-400">{session.completionPercentage}% Completed</p>
@@ -511,7 +531,7 @@ const StudySession = () => {
                 const isActive = activeTopic?.id === topic.id;
 
                 return (
-                  <button
+                  <motion.button
                     key={topic.id}
                     onClick={() => {
                       if (isCompleted) {
@@ -528,8 +548,10 @@ const StudySession = () => {
                         ? 'bg-accent/20 border-accent'
                         : isCompleted
                           ? 'bg-success/10 border-success/20 hover:bg-success/20'
-                          : 'bg-surface border-white/5 hover:border-white/20'
+                        : 'bg-surface border-white/5 hover:border-white/20'
                     )}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <div
@@ -547,7 +569,7 @@ const StudySession = () => {
                     <span className="font-medium text-sm leading-tight text-gray-200">
                       {topic.title}
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -562,7 +584,7 @@ const StudySession = () => {
                 const isActive = activeTab === tab.id;
                 const Icon = tab.icon;
                 return (
-                  <button
+                  <motion.button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
                     disabled={isDisabled}
@@ -573,9 +595,11 @@ const StudySession = () => {
                         : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-white/5',
                       isDisabled && 'opacity-30 cursor-not-allowed'
                     )}
+                    whileHover={isDisabled ? {} : { y: -1 }}
+                    whileTap={isDisabled ? {} : { scale: 0.97 }}
                   >
                     <Icon className="w-4 h-4" /> {tab.label}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -606,12 +630,14 @@ const StudySession = () => {
                     <div className="glass-card p-6 mb-8 border border-danger/30 bg-danger/10 text-danger-light">
                       <p className="text-lg font-semibold">Something went wrong.</p>
                       <p className="mt-2 text-sm leading-relaxed">{contentError}</p>
-                      <button
+                      <motion.button
                         onClick={() => loadTopicContent(activeTopic, activeTab)}
                         className="mt-4 inline-flex items-center justify-center rounded-full bg-white/10 px-5 py-2 text-sm text-white hover:bg-white/20 transition"
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
                       >
                         Retry
-                      </button>
+                      </motion.button>
                     </div>
                   ) : (
                     <>
@@ -706,13 +732,15 @@ const StudySession = () => {
                               placeholder="Ask a question..."
                               className="min-w-0 flex-1 w-full bg-midnight border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-accent text-sm"
                             />
-                            <button
+                            <motion.button
                               onClick={handleSendMessage}
                               disabled={isChatting || !chatInput.trim()}
                               className="min-h-[44px] min-w-[44px] bg-accent hover:bg-accent-light px-4 rounded-xl flex items-center justify-center disabled:opacity-50 transition-colors touch-target"
+                              whileHover={isChatting || !chatInput.trim() ? {} : { scale: 1.04 }}
+                              whileTap={isChatting || !chatInput.trim() ? {} : { scale: 0.96 }}
                             >
                               <Send className="w-5 h-5" />
-                            </button>
+                            </motion.button>
                           </div>
                         </div>
                       )}
@@ -725,20 +753,24 @@ const StudySession = () => {
             {/* Bottom Action Bar */}
             {activeTopic && activeTab !== 'plan' && (
               <div className="hidden lg:flex absolute bottom-0 left-0 lg:left-80 right-0 bg-surface/90 backdrop-blur-md border-t border-white/10 p-4 flex-wrap items-center justify-between gap-4 z-20">
-                <button
+                <motion.button
                   onClick={handleDeepDive}
                   disabled={isGeneratingContent || activeTab !== 'summary'}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-sm font-medium transition-colors disabled:opacity-50"
+                  whileHover={isGeneratingContent || activeTab !== 'summary' ? {} : { scale: 1.02 }}
+                  whileTap={isGeneratingContent || activeTab !== 'summary' ? {} : { scale: 0.97 }}
                 >
                   <MessageSquare className="w-4 h-4" /> I Need More Detail
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
                   onClick={markTopicDone}
                   className="flex items-center gap-2 px-6 py-2 rounded-full bg-success hover:bg-success/90 text-white font-bold text-sm transition-colors shadow-lg shadow-success/20"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   <CheckCircle2 className="w-5 h-5" /> Mark as Done
-                </button>
+                </motion.button>
               </div>
             )}
           </div>
@@ -750,7 +782,7 @@ const StudySession = () => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
               return (
-                <button
+                <motion.button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
                   disabled={isDisabled}
@@ -761,10 +793,12 @@ const StudySession = () => {
                       : 'border-white/10 text-gray-300 hover:border-accent hover:text-white',
                     isDisabled && 'cursor-not-allowed opacity-40'
                   )}
+                  whileHover={isDisabled ? {} : { y: -2 }}
+                  whileTap={isDisabled ? {} : { scale: 0.96 }}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -778,13 +812,15 @@ const StudySession = () => {
                   <p className="text-sm uppercase tracking-[0.3em] text-accent font-semibold">Session complete</p>
                   <h2 className="mt-3 text-3xl font-heading font-bold text-white">Great work, champion.</h2>
                 </div>
-                <button
+                <motion.button
                   type="button"
                   onClick={() => setShowSummaryModal(false)}
                   className="text-gray-400 hover:text-white transition-colors"
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.96 }}
                 >
                   Close
-                </button>
+                </motion.button>
               </div>
               <div className="grid gap-4 md:grid-cols-3 mb-6">
                 <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
