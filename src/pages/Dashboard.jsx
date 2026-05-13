@@ -11,16 +11,15 @@ import {
   serverTimestamp as firestoreServerTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth } from '../hooks/useAuth';
-import TopicInput from '../components/TopicInput';
-import { generateStudyPlan } from '../services/ai';
-import { BookOpen, Clock, ChevronRight, Target, Flame } from 'lucide-react';
-import MetaTags from '../components/MetaTags';
-import { buildLast7DaysSeries } from '../services/streakService';
+import { useAuth, useStudyData } from '../hooks';
+import { TopicInput, MetaTags } from '../components/ui';
+import { generateStudyPlan, buildLast7DaysSeries } from '../services';
+import { BookOpen, Clock, ChevronRight, Target, Flame, Trash2, Play } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { decks, deleteDeck, loadDeck } = useStudyData();
   const [sessions, setSessions] = useState([]);
   const [analytics, setAnalytics] = useState({
     totalHours: 0,
@@ -230,6 +229,59 @@ const Dashboard = () => {
                   </div>
                   <div className="flex items-center justify-end gap-1 text-sm font-medium text-gray-500 transition-colors group-hover:text-white">
                     Resume <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="text-xl font-heading font-bold flex items-center gap-2 mt-6">
+            <Target className="w-5 h-5 text-accent" /> Saved Decks
+          </h2>
+
+          {decks.length === 0 ? (
+            <div className="glass-card flex flex-col items-center justify-center text-center p-8 border-dashed border-white/20 bg-transparent">
+              <Target className="w-10 h-10 text-gray-500 mb-3" />
+              <p className="text-gray-400 text-sm">No saved decks.</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Generate flashcards in guest mode to save them here.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {decks.map((deck) => (
+                <div
+                  key={deck.id}
+                  className="glass-card !p-5 flex flex-col gap-3"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-lg mb-1">{deck.name}</h3>
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        {deck.cards.length} cards • Created {new Date(deck.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          const loadedDeck = loadDeck(deck.id);
+                          if (loadedDeck) {
+                            navigate('/try', { state: { loadedDeck } });
+                          }
+                        }}
+                        className="p-2 rounded-full bg-accent hover:bg-accent-light text-white transition-colors"
+                        title="Load Deck"
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteDeck(deck.id)}
+                        className="p-2 rounded-full bg-danger/20 hover:bg-danger/40 text-danger transition-colors"
+                        title="Delete Deck"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

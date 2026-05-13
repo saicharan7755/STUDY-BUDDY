@@ -2,14 +2,11 @@ import { Suspense, lazy, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth } from '../hooks/useAuth';
-import Timer from '../components/Timer';
-import ProgressRing from '../components/ProgressRing';
-const StudyPlan = lazy(() => import('../components/StudyPlan'));
-const Flashcard = lazy(() => import('../components/Flashcard'));
-const QuizBlock = lazy(() => import('../components/QuizBlock'));
-import Toast from '../components/Toast';
-import MetaTags from '../components/MetaTags';
+import { useAuth } from '../hooks';
+import { Timer, ProgressRing, Toast, MetaTags } from '../components/ui';
+const StudyPlan = lazy(() => import('../components/ui/StudyPlan'));
+const Flashcard = lazy(() => import('../components/features/Flashcard'));
+const QuizBlock = lazy(() => import('../components/features/QuizBlock'));
 import {
   generateSummary,
   generateFlashcards,
@@ -17,15 +14,13 @@ import {
   generateELI5,
   generateDeeperExplanation,
   generateChatReply,
-} from '../services/ai';
-import {
   fetchAllCardsForTopic,
   fetchDueCardsForTopic,
   persistGeneratedCards,
   updateCardReview,
-} from '../services/cardRepository';
-import { calculateNextReview, gradeToQuality } from '../utils/sm2';
-import { recordStudyActivity } from '../services/streakService';
+} from '../services';
+import { calculateNextReview, gradeToQuality } from '../utils';
+import { recordStudyActivity } from '../services';
 import {
   ChevronLeft,
   Loader2,

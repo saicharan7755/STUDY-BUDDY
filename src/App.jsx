@@ -1,8 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './hooks/useAuth';
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
+import { useAuth } from './hooks';
+import { Navbar, Footer, ErrorBoundary } from './components/ui';
 import Landing from './pages/Landing';
 import { Loader2 } from 'lucide-react';
 
@@ -40,35 +39,37 @@ function App() {
     <div className="min-h-screen flex flex-col bg-midnight text-white selection:bg-accent selection:text-white">
       <Navbar />
       <main className="flex-1 flex flex-col w-full relative">
-        <Suspense
-          fallback={
-            <div className="min-h-screen flex items-center justify-center bg-midnight text-accent">
-              <Loader2 className="w-10 h-10 animate-spin" />
-            </div>
-          }
-        >
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/try" element={<GuestMode />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/session/:id"
-              element={
-                <ProtectedRoute>
-                  <StudySession />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="min-h-screen flex items-center justify-center bg-midnight text-accent">
+                <Loader2 className="w-10 h-10 animate-spin" />
+              </div>
+            }
+          >
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/try" element={<GuestMode />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/session/:id"
+                element={
+                  <ProtectedRoute>
+                    <StudySession />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <Footer />
     </div>

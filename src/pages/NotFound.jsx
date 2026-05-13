@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Ghost } from 'lucide-react';
-import MetaTags from '../components/MetaTags';
+import { MetaTags } from '../components/ui';
 
 const NotFound = () => {
   return (

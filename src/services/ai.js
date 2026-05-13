@@ -1,32 +1,63 @@
 ﻿import { sanitizeText } from '../../lib/stringSanitize.js';
+import { parseGeminiResponse } from '../constants/prompts.js';
+
+const API_TIMEOUT_MS = 30000;
+
+const timeoutFetch = async (resource, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  try {
+    return await fetch(resource, { ...options, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
 
 const postAi = async (endpoint, body) => {
-  const response = await fetch(`/api/ai/${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await timeoutFetch(`/api/ai/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('The AI request timed out after 30 seconds. Please try again.');
+    }
+    if (e instanceof TypeError) {
+      throw new Error('Network connection error. Check your internet connection and try again.');
+    }
+    throw e;
+  }
 
   if (!response.ok) {
     const errorText = await response.text();
+    let parsedError;
     try {
-      const parsed = JSON.parse(errorText);
-      if (parsed && typeof parsed.error === 'string') {
-        throw new Error(parsed.error);
-      }
+      parsedError = JSON.parse(errorText);
     } catch (e) {
-      if (e instanceof SyntaxError) {
-        /* plain text body */
-      } else {
+      if (!(e instanceof SyntaxError)) {
         throw e;
       }
     }
-    throw new Error(errorText || 'AI request failed.');
+
+    const rawMessage = parsedError?.error || errorText || 'AI request failed.';
+    if (/quota/i.test(rawMessage)) {
+      throw new Error('API quota exceeded. Please wait before trying again.');
+    }
+
+    throw new Error(rawMessage);
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    throw new Error('Empty or invalid AI response. Please try again.');
+  }
 };
 
 const sanitizePayload = (payload) => {
@@ -76,13 +107,19 @@ export const generateSummary = async (topic, difficulty) => {
   return postAi('summary', payload);
 };
 
-export const generateFlashcards = async (topic) => {
-  const payload = sanitizePayload({ topic });
-  return postAi('flashcards', payload);
+export const generateFlashcards = async (topic, count = 10) => {
+  const payload = sanitizePayload({ topic, count });
+  const result = await postAi('flashcards', payload);
+
+  if (!result || !Array.isArray(result.flashcards) || result.flashcards.length === 0) {
+    throw new Error('Received empty or invalid AI response. Please try again.');
+  }
+
+  return result;
 };
 
-export const generateQuiz = async (topic) => {
-  const payload = sanitizePayload({ topic });
+export const generateQuiz = async (topic, count = 5) => {
+  const payload = sanitizePayload({ topic, count });
   return postAi('quiz', payload);
 };
 

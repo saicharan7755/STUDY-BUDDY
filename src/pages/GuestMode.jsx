@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   addDoc,
   collection as firestoreCollection,
@@ -7,30 +7,64 @@ import {
 } from 'firebase/firestore';
 import { Loader2, LogIn, Save, Sparkles } from 'lucide-react';
 import { auth, db } from '../config/firebase';
-import { useAuth } from '../hooks/useAuth';
-import { generateFlashcards } from '../services/ai';
-import {
-  clearGuestFlashcards,
-  loadGuestFlashcards,
-  saveGuestFlashcards,
-} from '../services/guestFlashcards';
-import { persistGeneratedCards } from '../services/cardRepository';
-import MetaTags from '../components/MetaTags';
+import { useAuth, useStudyData } from '../hooks';
+import { generateFlashcards, persistGeneratedCards } from '../services';
+import { MetaTags } from '../components/ui';
 
 const GuestMode = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, isAuthenticated, signIn } = useAuth();
-  const cachedCards = useMemo(() => loadGuestFlashcards(), []);
+  const { saveDeck, loadDeck } = useStudyData();
 
-  const [topic, setTopic] = useState(cachedCards[0]?.sourceText || '');
-  const [cards, setCards] = useState(cachedCards);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [count, setCount] = useState(10);
+  const [cards, setCards] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  const validateInput = (text, numCards) => {
+    const errors = [];
+
+    if (!text.trim()) {
+      errors.push('Text cannot be empty');
+    }
+
+    if (text.length < 50) {
+      errors.push('Text must be at least 50 characters long');
+    }
+
+    if (text.length > 10000) {
+      errors.push('Text cannot exceed 10,000 characters');
+    }
+
+    // Check for meaningful content: should have some letters, spaces, and not just symbols/numbers
+    const hasLetters = /[a-zA-Z]/.test(text);
+    const hasSpaces = /\s/.test(text);
+    const wordCount = text.trim().split(/\s+/).length;
+    const symbolRatio = (text.match(/[^a-zA-Z0-9\s]/g) || []).length / text.length;
+
+    if (!hasLetters || !hasSpaces || wordCount < 5 || symbolRatio > 0.5) {
+      errors.push('Text appears to be random or non-meaningful. Please provide coherent content.');
+    }
+
+    if (numCards < 3 || numCards > 50) {
+      errors.push('Number of flashcards must be between 3 and 50');
+    }
+
+    return errors;
+  };
+
+  const isValid = validateInput(topic, count).length === 0;
+
   useEffect(() => {
-    saveGuestFlashcards(cards);
-  }, [cards]);
+    const loadedDeck = location.state?.loadedDeck;
+    if (loadedDeck) {
+      setTopic(loadedDeck.name);
+      setCards(loadedDeck.cards);
+    }
+  }, [location.state]);
 
   const hasCards = cards.length > 0;
 
@@ -50,11 +84,16 @@ const GuestMode = () => {
   };
 
   const handleGenerate = async () => {
-    if (!topic.trim()) return;
+    const validationErrors = validateInput(topic, count);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join('. '));
+      return;
+    }
+
     setError(null);
-    setIsGenerating(true);
+    setIsLoading(true);
     try {
-      const result = await generateFlashcards(topic);
+      const result = await generateFlashcards(topic, count);
       const generated = (result.flashcards || []).map((card, index) => ({
         id: card.id || `guest-${Date.now()}-${index}`,
         front: card.front,
@@ -62,11 +101,18 @@ const GuestMode = () => {
         sourceText: topic.trim(),
         createdAt: new Date().toISOString(),
       }));
+
+      if (!generated.length) {
+        throw new Error('Received empty or invalid AI response. Please try again.');
+      }
+
       setCards(generated);
+      // Save as a deck
+      saveDeck(topic.trim(), generated);
     } catch (e) {
       setError(e.message || 'Failed to generate flashcards.');
     } finally {
-      setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
@@ -101,7 +147,6 @@ const GuestMode = () => {
         cards,
       });
 
-      clearGuestFlashcards();
       navigate(`/session/${sessionRef.id}`);
     } catch (e) {
       setError(e.message || 'Unable to save cards to your account.');
@@ -123,25 +168,70 @@ const GuestMode = () => {
             <p className="text-gray-400 mt-2">
               Paste any topic to generate flashcards without creating an account.
             </p>
-            <textarea
-              value={topic}
-              onChange={(event) => setTopic(event.target.value)}
-              placeholder="Paste chapter notes or topic details..."
-              className="mt-6 w-full h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent"
-            />
-            {error && (
-              <p className="mt-3 rounded-lg border border-danger/50 bg-danger/10 p-3 text-sm text-danger-light">
-                {error}
-              </p>
+            <div className="mt-6 space-y-4">
+              <div>
+                <label htmlFor="topic-text" className="block text-sm font-medium text-gray-300 mb-2">
+                  Topic Content
+                </label>
+                <textarea
+                  id="topic-text"
+                  value={topic}
+                  onChange={(event) => setTopic(event.target.value)}
+                  placeholder="Paste chapter notes or topic details..."
+                  className="w-full h-40 bg-surface/50 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 focus:outline-none focus:border-accent resize-none"
+                />
+                <div className="flex justify-between items-center mt-2">
+                  <div className="text-sm">
+                    <span className={`font-medium ${
+                      topic.length < 50 ? 'text-danger' :
+                      topic.length > 8000 ? 'text-warning' :
+                      topic.length > 10000 ? 'text-danger' : 'text-success'
+                    }`}>
+                      {topic.length.toLocaleString()}
+                    </span>
+                    <span className="text-gray-400"> / 10,000 characters</span>
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Min: 50 chars • Max: 10,000 chars
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="card-count" className="block text-sm font-medium text-gray-300 mb-2">
+                  Number of Flashcards
+                </label>
+                <select
+                  id="card-count"
+                  value={count}
+                  onChange={(event) => setCount(Number(event.target.value))}
+                  className="w-full bg-surface/50 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-accent"
+                >
+                  {[3,5,7,10,15,20,25,30,35,40,45,50].map(num => (
+                    <option key={num} value={num}>{num} flashcards</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {error && !isLoading && (
+              <div className="mt-4 rounded-2xl border border-danger/50 bg-danger/10 p-4 text-sm text-danger-light">
+                <p>{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="mt-2 text-xs underline hover:no-underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             )}
             <div className="mt-5 flex flex-wrap gap-3">
               <button
                 type="button"
-                disabled={isGenerating || !topic.trim()}
+                disabled={isLoading || !isValid}
                 onClick={handleGenerate}
-                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
-                {isGenerating ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Generating
                   </>

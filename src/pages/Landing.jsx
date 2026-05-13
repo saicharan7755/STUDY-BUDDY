@@ -13,12 +13,8 @@ import {
   Target,
   Zap,
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import MetaTags from '../components/MetaTags';
-import AnimatedCounter from '../components/AnimatedCounter';
-import LandingFaq from '../components/LandingFaq';
-import ProductDemoVisual from '../components/ProductDemoVisual';
-import LazyDemoVideo from '../components/LazyDemoVideo';
+import { useAuth } from '../hooks';
+import { MetaTags, AnimatedCounter, LandingFaq, ProductDemoVisual, LazyDemoVideo } from '../components/ui';
 
 const SECTION = 'scroll-mt-24 sm:scroll-mt-28';
 

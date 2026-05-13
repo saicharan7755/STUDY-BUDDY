@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Brain, LogOut, Menu, X } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks';
 import OptimizedImage from './OptimizedImage';
 
 const NAV_LINKS = [

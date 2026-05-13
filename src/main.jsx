@@ -4,8 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import App from './App.jsx';
 import './index.css';
-import { AuthProvider } from './context/AuthContext.jsx';
-import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { AuthProvider } from './context';
+import { ErrorBoundary } from './components/ui';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
