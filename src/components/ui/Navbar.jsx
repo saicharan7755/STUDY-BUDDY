@@ -19,7 +19,7 @@ function scrollToHash(hash) {
 }
 
 const Navbar = () => {
-  const { user, isAuthenticated, signOut, signIn } = useAuth();
+  const { user, isAuthenticated, signOut } = useAuth();
   const { decks } = useStudyData();
   const { dueCount } = useSpacedRepetition(decks);
   const navigate = useNavigate();
@@ -135,7 +135,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => {
-                signIn();
+                navigate('/login');
               }}
               className="text-sm font-medium text-gray-400 transition-colors hover:text-white"
             >
@@ -270,7 +270,7 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => {
-                signIn();
+                navigate('/login');
                 setMobileOpen(false);
               }}
               className="rounded-lg px-3 py-3 text-left text-base font-medium text-gray-200 hover:bg-white/5"

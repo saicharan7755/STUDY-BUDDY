@@ -8,10 +8,13 @@ import { Loader2 } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DueCards = lazy(() => import('./pages/DueCards'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const StudyProgressDashboard = lazy(() => import('./pages/StudyProgressDashboard'));
 const StudySession = lazy(() => import('./pages/StudySession'));
 const GuestMode = lazy(() => import('./pages/GuestMode'));
+const Login = lazy(() => import('./pages/Login'));
 const NotFound = lazy(() => import('./pages/NotFound'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -22,7 +25,7 @@ const ProtectedRoute = ({ children }) => {
         <Loader2 className="w-10 h-10 animate-spin" />
       </div>
     );
-  if (!isAuthenticated) return <Navigate to="/" />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return children;
 };
@@ -63,6 +66,10 @@ function App() {
                 <Routes location={location}>
                   <Route path="/" element={<Landing />} />
                   <Route path="/try" element={<GuestMode />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
                   <Route
                     path="/dashboard"
                     element={
