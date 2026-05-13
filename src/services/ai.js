@@ -123,6 +123,11 @@ export const generateQuiz = async (topic, count = 5) => {
   return postAi('quiz', payload);
 };
 
+export const generateTrueFalseQuiz = async (topic, count = 5) => {
+  const payload = sanitizePayload({ topic, count });
+  return postAi('true-false', payload);
+};
+
 export const generateELI5 = async (topic) => {
   const payload = sanitizePayload({ topic });
   return postAi('eli5', payload);

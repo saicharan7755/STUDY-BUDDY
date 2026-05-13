@@ -116,7 +116,16 @@ app.use((req, res, next) => {
 
 app.use('/api/ai', apiLimiter);
 
-const AI_ENDPOINTS = ['chat', 'study-plan', 'summary', 'flashcards', 'quiz', 'eli5', 'deeper'];
+const AI_ENDPOINTS = [
+  'chat',
+  'study-plan',
+  'summary',
+  'flashcards',
+  'quiz',
+  'true-false',
+  'eli5',
+  'deeper',
+];
 
 for (const path of AI_ENDPOINTS) {
   app.post(`/api/ai/${path}`, async (req, res) => {
@@ -148,4 +157,3 @@ const port = Number(process.env.PORT || 4000);
 app.listen(port, () => {
   console.info(`Server listening on http://localhost:${port}`);
 });
-

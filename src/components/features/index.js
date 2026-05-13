@@ -1,2 +1,9 @@
 export { default as Flashcard } from './Flashcard';
+export { default as FlashcardQuizMode } from './FlashcardQuizMode';
+export { default as FillBlankQuizMode } from './FillBlankQuizMode';
+export { default as MultipleChoiceQuizMode } from './MultipleChoiceQuizMode';
 export { default as QuizBlock } from './QuizBlock';
+export { default as QuizModeSelector } from './QuizModeSelector';
+export { default as QuizProgress } from './QuizProgress';
+export { default as QuizResults } from './QuizResults';
+export { default as TrueFalseQuizMode } from './TrueFalseQuizMode';

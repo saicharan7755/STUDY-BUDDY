@@ -83,6 +83,27 @@ Return ONLY a valid JSON object in the following format:
   ]
 }`;
 
+export const TRUE_FALSE_PROMPT = `You are an expert educator creating true/false active recall questions.
+Generate {count} true/false statements on the topic: {topic}.
+
+Requirements:
+- Mix true and false statements
+- False statements should be plausible but clearly incorrect
+- Include a brief explanation for each answer
+- Statements should test understanding, not trivia
+
+Return ONLY a valid JSON object in the following format:
+{
+  "trueFalse": [
+    {
+      "id": "unique-string-id",
+      "statement": "Clear statement about the topic.",
+      "answer": true,
+      "explanation": "Brief explanation of why the statement is true or false."
+    }
+  ]
+}`;
+
 export const ELI5_PROMPT = `Explain {topic} as if teaching a 5-year-old. Use everyday
 analogies, simple language, and relatable examples. No jargon. Make it
 memorable and fun. Include a 'Remember it like this:' mnemonic at the end.

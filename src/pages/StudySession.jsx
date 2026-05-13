@@ -12,6 +12,7 @@ import {
   generateSummary,
   generateFlashcards,
   generateQuiz,
+  generateTrueFalseQuiz,
   generateELI5,
   generateDeeperExplanation,
   generateChatReply,
@@ -253,8 +254,41 @@ const StudySession = () => {
           nextReviewDate: card.nextReviewDate,
         }));
       } else if (tab === 'quiz') {
-        const res = await generateQuiz(topic.title);
-        content = res.quiz;
+        let allCards = await fetchAllCardsForTopic({
+          uid: user.uid,
+          sessionId: id,
+          topicId: topic.id,
+        });
+        if (!allCards.length) {
+          const flashcardRes = await generateFlashcards(topic.title);
+          const generatedCards = Array.isArray(flashcardRes.flashcards)
+            ? flashcardRes.flashcards
+            : [];
+          await persistGeneratedCards({
+            uid: user.uid,
+            sessionId: id,
+            topicId: topic.id,
+            cards: generatedCards,
+          });
+          allCards = await fetchAllCardsForTopic({
+            uid: user.uid,
+            sessionId: id,
+            topicId: topic.id,
+          });
+        }
+        const [quizRes, trueFalseRes] = await Promise.all([
+          generateQuiz(topic.title),
+          generateTrueFalseQuiz(topic.title),
+        ]);
+        content = {
+          questions: quizRes.quiz || [],
+          trueFalseQuestions: trueFalseRes.trueFalse || [],
+          cards: allCards.map((card, index) => ({
+            id: card.id || card.cardId || `${topic.id}-${index}`,
+            front: card.front,
+            back: card.back,
+          })),
+        };
       } else if (tab === 'eli5') {
         const res = await generateELI5(topic.title);
         content = res.explanation;
@@ -694,7 +728,15 @@ const StudySession = () => {
                           }
                         >
                           <QuizBlock
-                            questions={topicContent[activeTopic.id]?.quiz || []}
+                            questions={
+                              Array.isArray(topicContent[activeTopic.id]?.quiz)
+                                ? topicContent[activeTopic.id].quiz
+                                : topicContent[activeTopic.id]?.quiz?.questions || []
+                            }
+                            cards={topicContent[activeTopic.id]?.quiz?.cards || []}
+                            trueFalseQuestions={
+                              topicContent[activeTopic.id]?.quiz?.trueFalseQuestions || []
+                            }
                             onGenerateMore={() => loadTopicContent(activeTopic, 'quiz')}
                           />
                         </Suspense>
