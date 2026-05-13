@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Brain, LogOut, Menu, X } from 'lucide-react';
-import { useAuth } from '../../hooks';
+import { useAuth, useSpacedRepetition, useStudyData } from '../../hooks';
 import OptimizedImage from './OptimizedImage';
 
 const NAV_LINKS = [
@@ -20,6 +20,8 @@ function scrollToHash(hash) {
 
 const Navbar = () => {
   const { user, isAuthenticated, signOut, signIn } = useAuth();
+  const { decks } = useStudyData();
+  const { dueCount } = useSpacedRepetition(decks);
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -87,9 +89,7 @@ const Navbar = () => {
       <div className="mx-auto flex max-w-[min(100%,72rem)] items-center justify-between gap-4">
         <Link to="/" className="flex min-w-0 items-center gap-2 group shrink-0">
           <Brain className="h-8 w-8 shrink-0 text-accent group-hover:text-accent-light transition-colors" />
-          <span className="font-heading text-xl font-bold tracking-tight sm:text-2xl">
-            CRAM AI
-          </span>
+          <span className="font-heading text-xl font-bold tracking-tight sm:text-2xl">CRAM AI</span>
         </Link>
 
         <div className="hidden items-center gap-6 md:flex md:gap-8">
@@ -120,6 +120,15 @@ const Navbar = () => {
               >
                 Progress
               </Link>
+              <Link
+                to="/due"
+                className="inline-flex items-center gap-2 text-sm font-medium text-gray-300 transition-colors hover:text-accent-light"
+              >
+                Review
+                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                  {dueCount}
+                </span>
+              </Link>
             </>
           )}
           {!isAuthenticated && (
@@ -138,7 +147,9 @@ const Navbar = () => {
             onClick={handlePrimaryCta}
             className="nav-cta hidden rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-md transition-transform duration-200 hover:scale-[1.03] hover:shadow-lg active:scale-[0.98] md:inline-flex md:items-center md:justify-center"
           >
-            <span className="hidden lg:inline">{isAuthenticated ? 'Open Dashboard' : 'Try it now — Free'}</span>
+            <span className="hidden lg:inline">
+              {isAuthenticated ? 'Open Dashboard' : 'Try it now — Free'}
+            </span>
             <span className="lg:hidden">{isAuthenticated ? 'Dashboard' : 'Try now'}</span>
           </button>
           {isAuthenticated && (
@@ -233,6 +244,16 @@ const Navbar = () => {
                 onClick={() => setMobileOpen(false)}
               >
                 Progress
+              </Link>
+              <Link
+                to="/due"
+                className="flex items-center justify-between rounded-lg px-3 py-3 text-base font-medium text-gray-200 hover:bg-white/5"
+                onClick={() => setMobileOpen(false)}
+              >
+                Review
+                <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-accent px-2 py-1 text-xs font-bold leading-none text-white">
+                  {dueCount}
+                </span>
               </Link>
               <button
                 type="button"

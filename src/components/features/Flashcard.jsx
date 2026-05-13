@@ -7,12 +7,14 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [shuffledCards, setShuffledCards] = useState([...cards]);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   // Reset state when new cards arrive
   useEffect(() => {
     setShuffledCards([...cards]);
     setCurrentIndex(0);
     setIsFlipped(false);
+    setReviewMessage('');
     window.speechSynthesis.cancel();
   }, [cards]);
 
@@ -30,6 +32,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     if (currentIndex < shuffledCards.length - 1) {
       window.speechSynthesis.cancel();
       setIsFlipped(false);
+      setReviewMessage('');
       setTimeout(() => setCurrentIndex(currentIndex + 1), 150); // slight delay for flip un-animation
     }
   };
@@ -38,6 +41,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     if (currentIndex > 0) {
       window.speechSynthesis.cancel();
       setIsFlipped(false);
+      setReviewMessage('');
       setTimeout(() => setCurrentIndex(currentIndex - 1), 150);
     }
   };
@@ -47,6 +51,19 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     setShuffledCards(newCards);
     setCurrentIndex(0);
     setIsFlipped(false);
+    setReviewMessage('');
+  };
+
+  const handleGrade = async (grade) => {
+    if (typeof onGrade !== 'function') return;
+    const result = await onGrade(card, grade);
+    if (result?.message) {
+      setReviewMessage(result.message);
+    } else if (result?.nextReviewDate) {
+      setReviewMessage(`Next review: ${new Date(result.nextReviewDate).toLocaleDateString()}`);
+    } else {
+      setReviewMessage('Review saved.');
+    }
   };
 
   // Keyboard support
@@ -69,9 +86,17 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
 
   const card = shuffledCards[currentIndex];
   const gradeActions = [
-    { id: 'again', label: 'Again', className: 'border-danger/40 text-danger-light hover:bg-danger/10' },
+    {
+      id: 'again',
+      label: 'Again',
+      className: 'border-danger/40 text-danger-light hover:bg-danger/10',
+    },
     { id: 'hard', label: 'Hard', className: 'border-warning/40 text-warning hover:bg-warning/10' },
-    { id: 'good', label: 'Good', className: 'border-accent/40 text-accent-light hover:bg-accent/10' },
+    {
+      id: 'good',
+      label: 'Good',
+      className: 'border-accent/40 text-accent-light hover:bg-accent/10',
+    },
     { id: 'easy', label: 'Easy', className: 'border-success/40 text-success hover:bg-success/10' },
   ];
 
@@ -99,54 +124,54 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
             transition={{ duration: 0.24, ease: 'easeOut' }}
             style={{ transformStyle: 'preserve-3d' }}
           >
-          {/* Front */}
-          <motion.div
-            className="absolute inset-0 backface-hidden glass-card bg-surface/80 flex flex-col items-center justify-center p-8 border-2 border-white/5 hover:border-accent/30 text-center"
-            style={{ backfaceVisibility: 'hidden' }}
-          >
-            <motion.button
-              onClick={(e) => {
-                e.stopPropagation();
-                speakText(card.front, e);
-              }}
-              onTouchStart={(e) => e.stopPropagation()}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
-              title="Listen"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.94 }}
+            {/* Front */}
+            <motion.div
+              className="absolute inset-0 backface-hidden glass-card bg-surface/80 flex flex-col items-center justify-center p-8 border-2 border-white/5 hover:border-accent/30 text-center"
+              style={{ backfaceVisibility: 'hidden' }}
             >
-              <Volume2 className="w-5 h-5" />
-            </motion.button>
-            <h3 className="text-2xl md:text-3xl font-heading font-semibold text-white break-words">
-              {card.front}
-            </h3>
-            <span className="absolute bottom-4 text-xs text-gray-500 font-medium tracking-widest uppercase">
-              Click or Space to Flip
-            </span>
-          </motion.div>
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speakText(card.front, e);
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
+                title="Listen"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+              >
+                <Volume2 className="w-5 h-5" />
+              </motion.button>
+              <h3 className="text-2xl md:text-3xl font-heading font-semibold text-white break-words">
+                {card.front}
+              </h3>
+              <span className="absolute bottom-4 text-xs text-gray-500 font-medium tracking-widest uppercase">
+                Click or Space to Flip
+              </span>
+            </motion.div>
 
-          {/* Back */}
-          <motion.div
-            className="absolute inset-0 backface-hidden glass-card bg-accent/10 flex flex-col items-center justify-center p-8 border-2 border-accent/40 text-center"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-          >
-            <motion.button
-              onClick={(e) => {
-                e.stopPropagation();
-                speakText(card.back, e);
-              }}
-              onTouchStart={(e) => e.stopPropagation()}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
-              title="Listen"
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.94 }}
+            {/* Back */}
+            <motion.div
+              className="absolute inset-0 backface-hidden glass-card bg-accent/10 flex flex-col items-center justify-center p-8 border-2 border-accent/40 text-center"
+              style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
             >
-              <Volume2 className="w-5 h-5" />
-            </motion.button>
-            <p className="text-xl md:text-2xl font-sans text-gray-100 leading-relaxed overflow-y-auto break-words">
-              {card.back}
-            </p>
-          </motion.div>
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speakText(card.back, e);
+                }}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-accent transition-colors rounded-full hover:bg-white/5"
+                title="Listen"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+              >
+                <Volume2 className="w-5 h-5" />
+              </motion.button>
+              <p className="text-xl md:text-2xl font-sans text-gray-100 leading-relaxed overflow-y-auto break-words">
+                {card.back}
+              </p>
+            </motion.div>
           </motion.div>
         </AnimatePresence>
       </div>
@@ -200,23 +225,36 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
         </motion.button>
       </div>
       {typeof onGrade === 'function' && (
-        <div className="mt-6 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
-          {gradeActions.map((action) => (
-            <motion.button
-              key={action.id}
-              type="button"
-              disabled={isSavingGrade}
-              onClick={() => onGrade(card, action.id)}
-              className={clsx(
-                'rounded-xl border px-4 py-3 min-h-[44px] text-sm font-semibold leading-none transition-colors disabled:opacity-50 touch-target',
-                action.className
-              )}
-              whileHover={isSavingGrade ? {} : { y: -2 }}
-              whileTap={isSavingGrade ? {} : { scale: 0.97 }}
-            >
-              {action.label}
-            </motion.button>
-          ))}
+        <div className="mt-6 w-full">
+          {reviewMessage && (
+            <p className="mb-3 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-center text-sm font-semibold text-success">
+              {reviewMessage}
+            </p>
+          )}
+          {isFlipped ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {gradeActions.map((action) => (
+                <motion.button
+                  key={action.id}
+                  type="button"
+                  disabled={isSavingGrade}
+                  onClick={() => handleGrade(action.id)}
+                  className={clsx(
+                    'rounded-xl border px-4 py-3 min-h-[44px] text-sm font-semibold leading-none transition-colors disabled:opacity-50 touch-target',
+                    action.className
+                  )}
+                  whileHover={isSavingGrade ? {} : { y: -2 }}
+                  whileTap={isSavingGrade ? {} : { scale: 0.97 }}
+                >
+                  {action.label}
+                </motion.button>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-white/10 bg-surface/40 px-4 py-3 text-center text-sm text-gray-400">
+              Flip the card to rate your recall.
+            </p>
+          )}
         </div>
       )}
     </div>

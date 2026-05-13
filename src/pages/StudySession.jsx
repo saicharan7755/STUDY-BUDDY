@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth } from '../hooks';
+import { formatReviewDistance, useAuth } from '../hooks';
 import { Timer, ProgressRing, Toast, MetaTags } from '../components/ui';
 const StudyPlan = lazy(() => import('../components/ui/StudyPlan'));
 const Flashcard = lazy(() => import('../components/features/Flashcard'));
@@ -218,7 +218,11 @@ const StudySession = () => {
         const res = await generateSummary(topic.title, session.difficulty);
         content = res.summary;
       } else if (tab === 'flashcards') {
-        let allCards = await fetchAllCardsForTopic({ uid: user.uid, sessionId: id, topicId: topic.id });
+        let allCards = await fetchAllCardsForTopic({
+          uid: user.uid,
+          sessionId: id,
+          topicId: topic.id,
+        });
         if (!allCards.length) {
           const res = await generateFlashcards(topic.title);
           const generatedCards = Array.isArray(res.flashcards) ? res.flashcards : [];
@@ -228,9 +232,17 @@ const StudySession = () => {
             topicId: topic.id,
             cards: generatedCards,
           });
-          allCards = await fetchAllCardsForTopic({ uid: user.uid, sessionId: id, topicId: topic.id });
+          allCards = await fetchAllCardsForTopic({
+            uid: user.uid,
+            sessionId: id,
+            topicId: topic.id,
+          });
         }
-        const dueCards = await fetchDueCardsForTopic({ uid: user.uid, sessionId: id, topicId: topic.id });
+        const dueCards = await fetchDueCardsForTopic({
+          uid: user.uid,
+          sessionId: id,
+          topicId: topic.id,
+        });
         content = (dueCards.length ? dueCards : allCards).map((card, index) => ({
           id: card.id || card.cardId || `${topic.id}-${index}`,
           front: card.front,
@@ -318,10 +330,16 @@ const StudySession = () => {
         },
       }));
 
-      showToast(`Saved review: ${grade}`, 'success');
+      const message = `Next review: ${formatReviewDistance(srsUpdate.nextReviewDate)}`;
+      showToast(message, 'success');
+      return {
+        nextReviewDate: srsUpdate.nextReviewDate,
+        message,
+      };
     } catch (error) {
       console.error(error);
       showToast('Unable to save your review right now.', 'danger');
+      return null;
     } finally {
       setIsSavingGrade(false);
     }
@@ -548,7 +566,7 @@ const StudySession = () => {
                         ? 'bg-accent/20 border-accent'
                         : isCompleted
                           ? 'bg-success/10 border-success/20 hover:bg-success/20'
-                        : 'bg-surface border-white/5 hover:border-white/20'
+                          : 'bg-surface border-white/5 hover:border-white/20'
                     )}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
@@ -809,8 +827,12 @@ const StudySession = () => {
             <div className="w-full max-w-2xl rounded-[32px] border border-white/10 bg-midnight/95 p-8 shadow-2xl shadow-black/50 backdrop-blur-xl">
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.3em] text-accent font-semibold">Session complete</p>
-                  <h2 className="mt-3 text-3xl font-heading font-bold text-white">Great work, champion.</h2>
+                  <p className="text-sm uppercase tracking-[0.3em] text-accent font-semibold">
+                    Session complete
+                  </p>
+                  <h2 className="mt-3 text-3xl font-heading font-bold text-white">
+                    Great work, champion.
+                  </h2>
                 </div>
                 <motion.button
                   type="button"
@@ -824,25 +846,37 @@ const StudySession = () => {
               </div>
               <div className="grid gap-4 md:grid-cols-3 mb-6">
                 <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
-                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Reviewed</p>
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">
+                    Reviewed
+                  </p>
                   <p className="mt-3 text-3xl font-heading font-bold">{sessionStats.attempted}</p>
                   <p className="text-xs text-gray-500 mt-1">cards this session</p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
-                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Correct</p>
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">
+                    Correct
+                  </p>
                   <p className="mt-3 text-3xl font-heading font-bold">{sessionStats.correct}</p>
                   <p className="text-xs text-gray-500 mt-1">responses</p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-surface/60 p-5">
-                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">Accuracy</p>
+                  <p className="text-sm text-gray-400 uppercase tracking-[0.18em] font-semibold">
+                    Accuracy
+                  </p>
                   <p className="mt-3 text-3xl font-heading font-bold">
-                    {sessionStats.attempted ? Math.round((sessionStats.correct / sessionStats.attempted) * 100) : 0}%
+                    {sessionStats.attempted
+                      ? Math.round((sessionStats.correct / sessionStats.attempted) * 100)
+                      : 0}
+                    %
                   </p>
                   <p className="text-xs text-gray-500 mt-1">session average</p>
                 </div>
               </div>
               <div className="rounded-[28px] border border-white/10 bg-surface/60 p-6">
-                <p className="text-sm text-gray-400">You completed all topics in this session. Keep your streak alive by starting another session or reviewing a topic again.</p>
+                <p className="text-sm text-gray-400">
+                  You completed all topics in this session. Keep your streak alive by starting
+                  another session or reviewing a topic again.
+                </p>
               </div>
             </div>
           </div>

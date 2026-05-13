@@ -11,16 +11,17 @@ import {
   serverTimestamp as firestoreServerTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth, useStudyData } from '../hooks';
+import { useAuth, useSpacedRepetition, useStudyData } from '../hooks';
 import { TopicInput, MetaTags } from '../components/ui';
 import { generateStudyPlan } from '../services';
 import { buildLast7DaysSeries } from '../services/streakService';
-import { BookOpen, Clock, ChevronRight, Target, Flame, Trash2, Play } from 'lucide-react';
+import { BookOpen, Clock, ChevronRight, Target, Flame, Trash2, Play, Layers3 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { decks, deleteDeck, loadDeck } = useStudyData();
+  const { dueCards, dueCount, estimatedMinutes } = useSpacedRepetition(decks);
   const [sessions, setSessions] = useState([]);
   const [analytics, setAnalytics] = useState({
     totalHours: 0,
@@ -177,7 +178,10 @@ const Dashboard = () => {
             </div>
             <div className="grid grid-cols-7 gap-2">
               {analytics.studiedLast7Days.map((point) => {
-                const maxCount = Math.max(...analytics.studiedLast7Days.map((item) => item.count), 1);
+                const maxCount = Math.max(
+                  ...analytics.studiedLast7Days.map((item) => item.count),
+                  1
+                );
                 const heightPercent = Math.max(8, Math.round((point.count / maxCount) * 100));
                 return (
                   <div key={point.key} className="flex flex-col items-center gap-1">
@@ -193,6 +197,47 @@ const Dashboard = () => {
                 );
               })}
             </div>
+          </div>
+
+          <div className="glass-card !p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
+                  Review queue
+                </p>
+                <h2 className="mt-2 text-xl font-heading font-bold">Cards due today</h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  {dueCount
+                    ? `${dueCount} cards ready in about ${estimatedMinutes} min.`
+                    : 'No saved cards are due right now.'}
+                </p>
+              </div>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-accent/40 bg-accent/10 text-lg font-bold text-accent-light">
+                {dueCount}
+              </div>
+            </div>
+            {dueCards.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {dueCards.slice(0, 3).map((card) => (
+                  <div
+                    key={card.srsKey}
+                    className="rounded-xl border border-white/10 bg-surface/40 px-3 py-2"
+                  >
+                    <p className="truncate text-sm font-semibold text-white">{card.front}</p>
+                    <p className="text-xs text-gray-500">{card.deckName}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/due')}
+              className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-light disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={!dueCount}
+            >
+              <Layers3 className="h-4 w-4" />
+              Start due review
+            </button>
           </div>
 
           <h2 className="text-xl font-heading font-bold flex items-center gap-2 mt-2">
@@ -251,15 +296,13 @@ const Dashboard = () => {
           ) : (
             <div className="flex flex-col gap-4">
               {decks.map((deck) => (
-                <div
-                  key={deck.id}
-                  className="glass-card !p-5 flex flex-col gap-3"
-                >
+                <div key={deck.id} className="glass-card !p-5 flex flex-col gap-3">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-lg mb-1">{deck.name}</h3>
                       <p className="text-xs text-gray-400 flex items-center gap-1">
-                        {deck.cards.length} cards • Created {new Date(deck.createdAt).toLocaleDateString()}
+                        {deck.cards.length} cards • Created{' '}
+                        {new Date(deck.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="flex gap-2">

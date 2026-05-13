@@ -7,6 +7,7 @@ import Landing from './pages/Landing';
 import { Loader2 } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DueCards = lazy(() => import('./pages/DueCards'));
 const StudyProgressDashboard = lazy(() => import('./pages/StudyProgressDashboard'));
 const StudySession = lazy(() => import('./pages/StudySession'));
 const GuestMode = lazy(() => import('./pages/GuestMode'));
@@ -67,6 +68,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/due"
+                    element={
+                      <ProtectedRoute>
+                        <DueCards />
                       </ProtectedRoute>
                     }
                   />
