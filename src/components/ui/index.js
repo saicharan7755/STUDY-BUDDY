@@ -6,6 +6,7 @@ export { default as Footer } from './Footer';
 export { default as LandingFaq } from './LandingFaq';
 export { default as LazyDemoVideo } from './LazyDemoVideo';
 export { default as MetaTags } from './MetaTags';
+export { default as SEO } from './SEO';
 export { default as Navbar } from './Navbar';
 export { default as OptimizedImage } from './OptimizedImage';
 export { default as ProductDemoVisual } from './ProductDemoVisual';
