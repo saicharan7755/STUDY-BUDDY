@@ -3,6 +3,7 @@ export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as ExportModal } from './ExportModal';
 export { default as FileUpload } from './FileUpload';
 export { default as Footer } from './Footer';
+export { default as CookieConsentBanner } from './CookieConsentBanner';
 export { default as LandingFaq } from './LandingFaq';
 export { default as LazyDemoVideo } from './LazyDemoVideo';
 export { default as MetaTags } from './MetaTags';

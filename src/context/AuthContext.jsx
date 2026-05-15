@@ -3,8 +3,34 @@ import { createContext, useState, useEffect } from 'react';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const STORAGE_KEY = 'cramAI_user';
+
+  const getStoredUser = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const [user, setUserState] = useState(getStoredUser);
   const [loading, setLoading] = useState(true);
+
+  const setUser = (nextUser) => {
+    setUserState(nextUser);
+    if (typeof window === 'undefined') return;
+    try {
+      if (nextUser) {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+      } else {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (error) {
+      console.error('Unable to persist auth user', error);
+    }
+  };
 
   const fetchWithCreds = async (url, opts = {}) => {
     const res = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
@@ -12,18 +38,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const storedUser = getStoredUser();
     const check = async () => {
       try {
         const res = await fetchWithCreds('/.netlify/functions/auth-me', { method: 'GET' });
         if (res.ok) {
           const data = await res.json();
-          setUser(data.user || null);
+          setUser(data.user || storedUser);
         } else {
-          setUser(null);
+          setUser(storedUser);
         }
       } catch (err) {
         console.error('Error checking auth status', err);
-        setUser(null);
+        setUser(storedUser);
       } finally {
         setLoading(false);
       }
@@ -50,17 +77,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signUpWithEmail = async (email, password) => {
+    if (!email?.trim() || !password) {
+      throw new Error('Enter your email and a password.');
+    }
+    if (password.length < 8) {
+      throw new Error('Password must be at least 8 characters.');
+    }
+
+    const user = { id: `user-${Date.now()}`, email: email.trim() };
+    setUser(user);
+    return user;
+  };
+
   const signOut = async () => {
     try {
       await fetchWithCreds('/.netlify/functions/auth-logout', { method: 'POST' });
-      setUser(null);
     } catch (err) {
       console.error('Error signing out', err);
+    } finally {
+      setUser(null);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithEmail, signOut, isAuthenticated: Boolean(user) }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signInWithEmail,
+        signUpWithEmail,
+        signOut,
+        isAuthenticated: Boolean(user),
+      }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   );

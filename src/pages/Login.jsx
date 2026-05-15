@@ -197,6 +197,14 @@ export default function Login() {
             {googleLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
             {googleLoading ? 'Opening Google...' : 'Continue with Google'}
           </button>
+
+          <p className="mt-6 text-center text-sm text-gray-400">
+            New to CRAM AI?{' '}
+            <Link to="/signup" className="font-semibold text-accent-light hover:text-white">
+              Create an account
+            </Link>
+            .
+          </p>
         </div>
       </section>
 

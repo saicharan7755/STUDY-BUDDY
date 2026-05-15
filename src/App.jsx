@@ -2,8 +2,11 @@ import { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks';
-import { Navbar, Footer, ErrorBoundary } from './components/ui';
+import { Navbar, Footer, ErrorBoundary, CookieConsentBanner } from './components/ui';
 import Landing from './pages/Landing';
+import Signup from './pages/Signup';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsPage from './pages/TermsPage';
 import { Loader2 } from 'lucide-react';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -45,6 +48,7 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col bg-midnight text-white selection:bg-accent selection:text-white">
       <Navbar />
+      <CookieConsentBanner />
       <main className="flex-1 flex flex-col w-full relative">
         <ErrorBoundary>
           <Suspense
@@ -70,6 +74,9 @@ function App() {
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+                  <Route path="/terms-of-service" element={<TermsPage />} />
                   <Route
                     path="/dashboard"
                     element={
