@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import useLocalStorage from './useLocalStorage';
 
 const useStudyData = () => {
@@ -13,18 +13,46 @@ const useStudyData = () => {
       cards,
       createdAt: new Date().toISOString(),
     };
-    setDecks(prev => [...prev, newDeck]);
+    setDecks((prev) => [...prev, newDeck]);
     return newDeck.id;
   }, [setDecks]);
 
   const deleteDeck = useCallback((deckId) => {
-    setDecks(prev => prev.filter(deck => deck.id !== deckId));
-    setHistory(prev => prev.filter(h => h.deckId !== deckId));
+    setDecks((prev) => prev.filter((deck) => deck.id !== deckId));
+    setHistory((prev) => prev.filter((h) => h.deckId !== deckId));
   }, [setDecks, setHistory]);
 
-  const loadDeck = useCallback((deckId) => {
-    return decks.find(deck => deck.id === deckId);
-  }, [decks]);
+  const softDeleteDeck = useCallback((deckId) => {
+    setDecks((prev) =>
+      prev.map((deck) =>
+        deck.id === deckId ? { ...deck, isDeleted: true, deletedAt: new Date().toISOString() } : deck
+      )
+    );
+    setHistory((prev) => prev.filter((h) => h.deckId !== deckId));
+  }, [setDecks, setHistory]);
+
+  const restoreDeck = useCallback(
+    (deck) => {
+      setDecks((prev) =>
+        prev.map((existing) =>
+          existing.id === deck.id ? { ...deck, isDeleted: false, deletedAt: null } : existing
+        )
+      );
+    },
+    [setDecks]
+  );
+
+  const permanentlyRemoveDeck = useCallback(
+    (deckId) => {
+      setDecks((prev) => prev.filter((deck) => deck.id !== deckId));
+    },
+    [setDecks]
+  );
+
+  const loadDeck = useCallback(
+    (deckId) => decks.find((deck) => deck.id === deckId && !deck.isDeleted),
+    [decks]
+  );
 
   const updateProgress = useCallback((topicId, updates) => {
     setProgress(prev => ({
@@ -40,15 +68,30 @@ const useStudyData = () => {
       date: new Date().toISOString(),
       ...progressData,
     };
-    setHistory(prev => [...prev, entry]);
+    setHistory((prev) => [...prev, entry]);
   }, [setHistory]);
 
+  useEffect(() => {
+    const now = Date.now();
+    setDecks((prev) =>
+      prev.filter((deck) => {
+        if (!deck.isDeleted || !deck.deletedAt) return true;
+        return now - new Date(deck.deletedAt).getTime() < 8000;
+      })
+    );
+  }, [setDecks]);
+
+  const activeDecks = decks.filter((deck) => !deck.isDeleted);
+
   return {
-    decks,
+    decks: activeDecks,
     history,
     progress,
     saveDeck,
     deleteDeck,
+    softDeleteDeck,
+    restoreDeck,
+    permanentlyRemoveDeck,
     loadDeck,
     updateProgress,
     addHistoryEntry,

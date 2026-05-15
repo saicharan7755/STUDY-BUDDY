@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { X, CheckCircle2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import UndoToast from './UndoToast';
 import { ToastContext } from './ToastContext';
 
 const DEFAULT_DURATION = 5000;
@@ -30,6 +31,7 @@ const buildToast = (id, type, message, options = {}) => ({
   description: options.description || '',
   duration: options.duration !== undefined ? options.duration : DEFAULT_DURATION,
   action: options.action,
+  showProgress: options.showProgress || false,
 });
 
 const ToastProvider = ({ children }) => {
@@ -123,34 +125,47 @@ const ToastProvider = ({ children }) => {
                   aria-atomic="true"
                   className={`rounded-3xl border p-4 shadow-2xl shadow-black/30 backdrop-blur-xl ${typeStyles[toast.type]}`}
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="mt-1">
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm leading-tight">{toast.message}</p>
-                      {toast.description && (
-                        <p className="mt-1 text-sm leading-6 opacity-90">{toast.description}</p>
-                      )}
-                      {toast.action && (
-                        <button
-                          type="button"
-                          onClick={toast.action.onClick}
-                          className="mt-3 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
-                        >
-                          {toast.action.label}
-                        </button>
-                      )}
+                  {toast.showProgress ? (
+                    <UndoToast
+                      message={toast.message}
+                      actionLabel={toast.action?.label || 'Undo'}
+                      onUndo={() => {
+                        toast.action?.onClick?.();
+                        removeToast(toast.id);
+                      }}
+                      onClose={() => removeToast(toast.id)}
+                      duration={toast.duration}
+                    />
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm leading-tight">{toast.message}</p>
+                        {toast.description && (
+                          <p className="mt-1 text-sm leading-6 opacity-90">{toast.description}</p>
+                        )}
+                        {toast.action && (
+                          <button
+                            type="button"
+                            onClick={toast.action.onClick}
+                            className="mt-3 inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/15"
+                          >
+                            {toast.action.label}
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeToast(toast.id)}
+                        className="rounded-full p-2 text-white/90 transition hover:text-white"
+                        aria-label="Dismiss notification"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeToast(toast.id)}
-                      className="rounded-full p-2 text-white/90 transition hover:text-white"
-                      aria-label="Dismiss notification"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                  )}
                 </motion.div>
               );
             })}

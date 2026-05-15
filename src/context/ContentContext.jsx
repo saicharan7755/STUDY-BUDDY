@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   deleteContent as deleteContentRecord,
   getUserContent,
@@ -61,6 +61,7 @@ export const ContentProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pendingItemIds, setPendingItemIds] = useState([]);
+  const deleteTimers = useRef({});
   const toast = useToast();
 
   const setPending = useCallback((contentId, isPending) => {
@@ -69,6 +70,28 @@ export const ContentProvider = ({ children }) => {
       return prev.filter((id) => id !== contentId);
     });
   }, []);
+
+  const clearDeleteTimer = useCallback((contentId) => {
+    if (!contentId) return;
+    const timerId = deleteTimers.current[contentId];
+    if (timerId) {
+      window.clearTimeout(timerId);
+      delete deleteTimers.current[contentId];
+    }
+  }, []);
+
+  const undoDeleteContent = useCallback(
+    (contentId) => {
+      clearDeleteTimer(contentId);
+      setContent((prev) =>
+        prev.map((item) =>
+          item.id === contentId ? { ...item, isDeleted: false, deletedAt: null } : item
+        )
+      );
+      toast.success('Restored deleted item.');
+    },
+    [clearDeleteTimer, toast]
+  );
 
   const showRollbackToast = useCallback((contentType) => {
     toast.error(DATA_ERROR_MESSAGES.saveFailed(contentType), {
@@ -200,27 +223,50 @@ export const ContentProvider = ({ children }) => {
         return { data: null, error: authError };
       }
 
-      const previousContent = content;
-      setPending(contentId, true);
-      setContent((prev) =>
-        prev.map((item) => (item.id === contentId ? { ...item, isDeleting: true } : item))
-      );
-
-      const result = await deleteContentRecord(userId, contentId);
-      if (result.error) {
-        setContent(previousContent);
-        setPending(contentId, false);
-        setError(result.error);
-        toast.error(DATA_ERROR_MESSAGES.deleteFailed);
-        return result;
+      const item = content.find((item) => item.id === contentId);
+      if (!item) {
+        const missingError = { type: 'NOT_FOUND', message: 'Content item was not found.' };
+        setError(missingError);
+        return { data: null, error: missingError };
       }
 
-      setContent((prev) => prev.filter((item) => item.id !== contentId));
-      setPending(contentId, false);
-      setError(null);
-      return result;
+      const deletedAt = new Date().toISOString();
+      setContent((prev) =>
+        prev.map((entry) =>
+          entry.id === contentId ? { ...entry, isDeleted: true, deletedAt } : entry
+        )
+      );
+
+      const timerId = window.setTimeout(async () => {
+        const result = await deleteContentRecord(userId, contentId);
+        delete deleteTimers.current[contentId];
+
+        if (result.error) {
+          setContent((prev) =>
+            prev.map((entry) =>
+              entry.id === contentId ? { ...entry, isDeleted: false, deletedAt: null } : entry
+            )
+          );
+          toast.error(DATA_ERROR_MESSAGES.deleteFailed, {
+            description: 'Your item has been restored so you can try again.',
+          });
+        }
+      }, 8000);
+
+      deleteTimers.current[contentId] = timerId;
+
+      toast.info(`${item.title} deleted.`, {
+        action: {
+          label: 'Undo',
+          onClick: () => undoDeleteContent(contentId),
+        },
+        duration: 8000,
+        showProgress: true,
+      });
+
+      return { data: { id: contentId }, error: null };
     },
-    [content, setPending, toast, userId]
+    [content, toast, undoDeleteContent, userId]
   );
 
   const value = useMemo(
@@ -246,6 +292,13 @@ export const ContentProvider = ({ children }) => {
       updateContent,
     ]
   );
+
+  useEffect(() => {
+    return () => {
+      Object.values(deleteTimers.current).forEach(window.clearTimeout);
+      deleteTimers.current = {};
+    };
+  }, []);
 
   return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
 };

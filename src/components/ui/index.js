@@ -15,6 +15,8 @@ export { default as ProgressRing } from './ProgressRing';
 export { default as StudyPlan } from './StudyPlan';
 export { default as Timer } from './Timer';
 export { default as Toast } from './Toast';
+export { default as UndoToast } from './UndoToast';
+export { default as ConfirmationDialog } from './ConfirmationDialog';
 export { default as ToastProvider } from './ToastProvider';
 export { ToastContext } from './ToastContext';
 export { default as RateLimitBanner } from './RateLimitBanner';

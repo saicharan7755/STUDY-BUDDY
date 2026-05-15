@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRetry, useToast } from '../hooks';
+import useConfirmation from '../hooks/useConfirmation';
 import {
   collection as firestoreCollection,
   query as firestoreQuery,
@@ -13,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth, useContent, useSpacedRepetition, useStudyData } from '../hooks';
-import { TopicInput, MetaTags, ExportModal } from '../components/ui';
+import { ConfirmationDialog, TopicInput, MetaTags, ExportModal } from '../components/ui';
 import { generateStudyPlan } from '../services';
 import { buildLast7DaysSeries } from '../services/streakService';
 import {
@@ -28,6 +29,7 @@ import {
   Layers3,
   FileText,
   RefreshCw,
+  MoreVertical,
 } from 'lucide-react';
 
 const ContentSkeletonCards = () => (
@@ -62,8 +64,9 @@ const Dashboard = () => {
     pendingItemIds,
     refreshContent,
   } = useContent();
+  const visibleContent = content.filter((item) => !item.isDeleted);
   const navigate = useNavigate();
-  const { decks, deleteDeck, loadDeck } = useStudyData();
+  const { decks, loadDeck, softDeleteDeck, restoreDeck, permanentlyRemoveDeck } = useStudyData();
   const { dueCards, dueCount, estimatedMinutes } = useSpacedRepetition(decks);
   const [sessions, setSessions] = useState([]);
   const [analytics, setAnalytics] = useState({
@@ -77,7 +80,93 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [exportDeck, setExportDeck] = useState(null);
   const toast = useToast();
+  const { openConfirmation, confirmationProps } = useConfirmation();
+  const deckDeleteTimers = useRef({});
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
   const { execute: generateStudyPlanWithRetry, retryCount } = useRetry(generateStudyPlan, 3, 1000);
+
+  const getContentDeleteCopy = useCallback((item) => {
+    if (item.type === 'flashcards') {
+      return {
+        title: 'Delete Flashcard Set?',
+        message: `This will permanently delete '${item.title}' and all ${item.metadata?.cardCount || 0} cards. This cannot be undone.`,
+        confirmLabel: 'Yes, Delete Set',
+      };
+    }
+
+    if (item.type === 'quiz') {
+      return {
+        title: 'Delete Quiz?',
+        message: `This will permanently delete '${item.title}' and your score history. This cannot be undone.`,
+        confirmLabel: 'Yes, Delete Quiz',
+      };
+    }
+
+    return {
+      title: 'Delete Summary?',
+      message: `This will permanently delete '${item.title}'. This cannot be undone.`,
+      confirmLabel: 'Yes, Delete Summary',
+    };
+  }, []);
+
+  const handleContentDelete = useCallback(
+    (item, triggerElement) => {
+      const copy = getContentDeleteCopy(item);
+      openConfirmation({
+        title: copy.title,
+        message: copy.message,
+        confirmLabel: copy.confirmLabel,
+        type: 'danger',
+        onConfirm: async () => {
+          const result = await deleteContent(item.id);
+          if (result.error) throw result.error;
+        },
+        returnFocusRef: { current: triggerElement },
+      });
+    },
+    [deleteContent, getContentDeleteCopy, openConfirmation]
+  );
+
+  const handleDeckDelete = useCallback(
+    (deck, triggerElement) => {
+      openConfirmation({
+        title: 'Delete Flashcard Set?',
+        message: `This will permanently delete '${deck.name}' and all ${deck.cards.length} cards. This cannot be undone.`,
+        confirmLabel: 'Yes, Delete Set',
+        type: 'danger',
+        onConfirm: async () => {
+          softDeleteDeck(deck.id);
+          const timerId = window.setTimeout(() => {
+            permanentlyRemoveDeck(deck.id);
+            delete deckDeleteTimers.current[deck.id];
+          }, 8000);
+          deckDeleteTimers.current[deck.id] = timerId;
+          toast.info(`${deck.name} deleted.`, {
+            action: {
+              label: 'Undo',
+              onClick: () => {
+                window.clearTimeout(deckDeleteTimers.current[deck.id]);
+                delete deckDeleteTimers.current[deck.id];
+                restoreDeck(deck);
+                toast.success('Deck restored.');
+              },
+            },
+            duration: 8000,
+            showProgress: true,
+          });
+        },
+        returnFocusRef: { current: triggerElement },
+      });
+    },
+    [permanentlyRemoveDeck, restoreDeck, openConfirmation, softDeleteDeck, toast]
+  );
+
+  useEffect(() => {
+    return () => {
+      Object.values(deckDeleteTimers.current).forEach(window.clearTimeout);
+      deckDeleteTimers.current = {};
+    };
+  }, []);
 
   const _loadSessions = useCallback(async () => {
     if (!user?.uid) return;
@@ -325,9 +414,9 @@ const Dashboard = () => {
             </div>
           )}
 
-          {isContentLoading && content.length === 0 ? (
+          {isContentLoading && visibleContent.length === 0 ? (
             <ContentSkeletonCards />
-          ) : content.length === 0 ? (
+          ) : visibleContent.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center text-center p-8 border-dashed border-white/20 bg-transparent">
               <FileText className="w-10 h-10 text-gray-500 mb-3" />
               <p className="text-gray-400 text-sm">No generated content saved yet.</p>
@@ -337,7 +426,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {content.slice(0, 6).map((item) => {
+              {content.filter((item) => !item.isDeleted).slice(0, 6).map((item) => {
                 const isPending = pendingItemIds.includes(item.id) || item.isPending || item.isDeleting;
                 return (
                   <div
@@ -360,15 +449,44 @@ const Dashboard = () => {
                           </p>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => deleteContent(item.id)}
-                        disabled={isPending}
-                        className="p-2 rounded-full bg-danger/20 hover:bg-danger/40 text-danger transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        title="Delete content"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="relative flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => handleContentDelete(item, event.currentTarget)}
+                          disabled={isPending}
+                          className="hidden min-h-[44px] min-w-[44px] rounded-full bg-danger/20 p-3 text-danger transition-colors hover:bg-danger/40 disabled:cursor-not-allowed disabled:opacity-50 sm:inline-flex"
+                          title="Delete content"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpenActionMenuId((current) => (current === item.id ? null : item.id));
+                          }}
+                          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-white/10 bg-white/5 text-gray-300 transition-colors hover:bg-white/10 sm:hidden"
+                          aria-label="Open actions"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {openActionMenuId === item.id && (
+                          <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-2xl border border-white/10 bg-slate-950 p-2 shadow-2xl shadow-black/40">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleContentDelete(item, event.currentTarget);
+                                setOpenActionMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-2 rounded-2xl p-3 text-left text-sm font-semibold text-white transition hover:bg-white/5"
+                            >
+                              <Trash2 className="w-4 h-4 text-danger" />
+                              Delete content
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -441,7 +559,7 @@ const Dashboard = () => {
                         {new Date(deck.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="relative flex items-center gap-2">
                       <button
                         onClick={() => setExportDeck(deck)}
                         className="p-2 rounded-full bg-white/10 hover:bg-white/15 text-accent-light transition-colors"
@@ -462,12 +580,40 @@ const Dashboard = () => {
                         <Play className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => deleteDeck(deck.id)}
-                        className="p-2 rounded-full bg-danger/20 hover:bg-danger/40 text-danger transition-colors"
+                        type="button"
+                        onClick={(event) => handleDeckDelete(deck, event.currentTarget)}
+                        className="hidden min-h-[44px] min-w-[44px] rounded-full bg-danger/20 p-2 text-danger transition-colors hover:bg-danger/40 sm:inline-flex"
                         title="Delete Deck"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenActionMenuId((current) => (current === deck.id ? null : deck.id));
+                        }}
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-white/10 bg-white/5 text-gray-300 transition-colors hover:bg-white/10 sm:hidden"
+                        aria-label="Open deck actions"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {openActionMenuId === deck.id && (
+                        <div className="absolute right-0 top-full z-20 mt-2 w-44 rounded-2xl border border-white/10 bg-slate-950 p-2 shadow-2xl shadow-black/40">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeckDelete(deck, event.currentTarget);
+                              setOpenActionMenuId(null);
+                            }}
+                            className="flex w-full items-center gap-2 rounded-2xl p-3 text-left text-sm font-semibold text-white transition hover:bg-white/5"
+                          >
+                            <Trash2 className="w-4 h-4 text-danger" />
+                            Delete deck
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -476,6 +622,7 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+      <ConfirmationDialog {...confirmationProps} />
       <ExportModal
         isOpen={Boolean(exportDeck)}
         onClose={() => setExportDeck(null)}
