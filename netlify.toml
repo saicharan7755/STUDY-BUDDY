@@ -17,3 +17,10 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+## Example environment settings (do NOT store secrets here in plaintext for production)
+[context.production.environment]
+  # Set these in Netlify Dashboard → Site settings → Environment → Environment variables
+  OPENAI_API_KEY = "SET_IN_NETLIFY_DASHBOARD"
+  OPENAI_MODEL = "gpt-3.5-turbo"
+  ALLOWED_ORIGINS = "https://yourdomain.com"

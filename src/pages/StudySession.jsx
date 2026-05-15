@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { formatReviewDistance, useAuth } from '../hooks';
+import { formatReviewDistance, useAuth, useContent } from '../hooks';
 import { Timer, ProgressRing, Toast, MetaTags } from '../components/ui';
 const StudyPlan = lazy(() => import('../components/ui/StudyPlan'));
 const Flashcard = lazy(() => import('../components/features/Flashcard'));
@@ -47,24 +47,25 @@ const TABS = [
   { id: 'tutor', label: 'AI Tutor', icon: MessageSquare },
 ];
 
-const LoadingSkeleton = ({ variant }) => {
-  const SkeletonBox = ({ className = '' }) => (
-    <motion.div
-      className={`skeleton-card ${className}`}
-      initial={{ opacity: 0.45 }}
-      animate={{ opacity: [0.45, 0.85, 0.45] }}
-      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-    />
-  );
-  const SkeletonLine = ({ className = '' }) => (
-    <motion.div
-      className={`skeleton-line ${className}`}
-      initial={{ opacity: 0.45 }}
-      animate={{ opacity: [0.45, 0.85, 0.45] }}
-      transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
-    />
-  );
+const SkeletonBox = ({ className = '' }) => (
+  <motion.div
+    className={`skeleton-card ${className}`}
+    initial={{ opacity: 0.45 }}
+    animate={{ opacity: [0.45, 0.85, 0.45] }}
+    transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+  />
+);
 
+const SkeletonLine = ({ className = '' }) => (
+  <motion.div
+    className={`skeleton-line ${className}`}
+    initial={{ opacity: 0.45 }}
+    animate={{ opacity: [0.45, 0.85, 0.45] }}
+    transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+  />
+);
+
+const LoadingSkeleton = ({ variant }) => {
   if (variant === 'summary') {
     return (
       <div className="space-y-4">
@@ -110,6 +111,7 @@ const LoadingSkeleton = ({ variant }) => {
 const StudySession = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const { saveContent: persistContent, isSaving: isSavingContent } = useContent();
   const navigate = useNavigate();
 
   const [session, setSession] = useState(null);
@@ -215,9 +217,11 @@ const StudySession = () => {
     setContentError(null);
     try {
       let content = null;
+      let shouldPersistGeneratedContent = false;
       if (tab === 'summary') {
         const res = await generateSummary(topic.title, session.difficulty);
         content = res.summary;
+        shouldPersistGeneratedContent = true;
       } else if (tab === 'flashcards') {
         let allCards = await fetchAllCardsForTopic({
           uid: user.uid,
@@ -233,6 +237,7 @@ const StudySession = () => {
             topicId: topic.id,
             cards: generatedCards,
           });
+          shouldPersistGeneratedContent = true;
           allCards = await fetchAllCardsForTopic({
             uid: user.uid,
             sessionId: id,
@@ -289,6 +294,7 @@ const StudySession = () => {
             back: card.back,
           })),
         };
+        shouldPersistGeneratedContent = true;
       } else if (tab === 'eli5') {
         const res = await generateELI5(topic.title);
         content = res.explanation;
@@ -301,6 +307,21 @@ const StudySession = () => {
           [tab]: content,
         },
       }));
+
+      if (shouldPersistGeneratedContent) {
+        const contentType = tab === 'summary' ? 'summary' : tab;
+        const persistedContent =
+          tab === 'summary'
+            ? { summary: content }
+            : tab === 'flashcards'
+              ? { cards: content }
+              : content;
+
+        void persistContent(contentType, {
+          content: persistedContent,
+          sourceText: session?.syllabus || topic.title,
+        });
+      }
     } catch (err) {
       const message = err?.message || "We couldn't generate this content. Please try again.";
       setContentError(message);
@@ -560,6 +581,11 @@ const StudySession = () => {
             <div>
               <h1 className="text-xl font-heading font-bold">{session.subject} Session</h1>
               <p className="text-xs text-gray-400">{session.completionPercentage}% Completed</p>
+              {isSavingContent && (
+                <p className="mt-1 text-xs font-medium text-accent-light" role="status">
+                  Saving...
+                </p>
+              )}
             </div>
           </div>
 

@@ -11,7 +11,7 @@ import {
   serverTimestamp as firestoreServerTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { useAuth, useSpacedRepetition, useStudyData } from '../hooks';
+import { useAuth, useContent, useSpacedRepetition, useStudyData } from '../hooks';
 import { TopicInput, MetaTags, ExportModal } from '../components/ui';
 import { generateStudyPlan } from '../services';
 import { buildLast7DaysSeries } from '../services/streakService';
@@ -25,10 +25,42 @@ import {
   Trash2,
   Play,
   Layers3,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
+
+const ContentSkeletonCards = () => (
+  <div className="flex flex-col gap-4">
+    {[0, 1, 2].map((item) => (
+      <div key={item} className="glass-card !p-5">
+        <div className="mb-3 h-3 w-20 animate-pulse rounded-full bg-white/10" />
+        <div className="mb-4 h-5 w-3/4 animate-pulse rounded-full bg-white/10" />
+        <div className="flex gap-2">
+          <div className="h-4 w-16 animate-pulse rounded-full bg-white/10" />
+          <div className="h-4 w-24 animate-pulse rounded-full bg-white/10" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const getContentMetaLabel = (item) => {
+  if (item.type === 'flashcards') return `${item.metadata?.cardCount || 0} cards`;
+  if (item.type === 'quiz') return `${item.metadata?.questionCount || 0} questions`;
+  return `${item.metadata?.wordCount || 0} words`;
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const {
+    content,
+    deleteContent,
+    error: contentError,
+    isLoading: isContentLoading,
+    isSaving,
+    pendingItemIds,
+    refreshContent,
+  } = useContent();
   const navigate = useNavigate();
   const { decks, deleteDeck, loadDeck } = useStudyData();
   const { dueCards, dueCount, estimatedMinutes } = useSpacedRepetition(decks);
@@ -156,6 +188,11 @@ const Dashboard = () => {
             <p className="text-gray-400">
               Paste your materials below and let AI build your strategy.
             </p>
+            {isSaving && (
+              <p className="mt-2 text-xs font-medium text-accent-light" role="status">
+                Saving...
+              </p>
+            )}
           </div>
 
           {error && (
@@ -252,6 +289,79 @@ const Dashboard = () => {
           </div>
 
           <h2 className="text-xl font-heading font-bold flex items-center gap-2 mt-2">
+            <FileText className="w-5 h-5 text-accent" /> Generated Content
+          </h2>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-gray-500">Summaries, quizzes, and flashcards saved to your account.</p>
+            <button
+              type="button"
+              onClick={refreshContent}
+              className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+              title="Refresh content"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {contentError && (
+            <div className="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger-light">
+              {contentError.message}
+            </div>
+          )}
+
+          {isContentLoading && content.length === 0 ? (
+            <ContentSkeletonCards />
+          ) : content.length === 0 ? (
+            <div className="glass-card flex flex-col items-center justify-center text-center p-8 border-dashed border-white/20 bg-transparent">
+              <FileText className="w-10 h-10 text-gray-500 mb-3" />
+              <p className="text-gray-400 text-sm">No generated content saved yet.</p>
+              <p className="text-gray-500 text-xs mt-1">
+                Create summaries, quizzes, or flashcards inside a study session.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {content.slice(0, 6).map((item) => {
+                const isPending = pendingItemIds.includes(item.id) || item.isPending || item.isDeleting;
+                return (
+                  <div
+                    key={item.id}
+                    className={`glass-card !p-5 flex flex-col gap-3 ${item.isDeleting ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
+                          {item.type}
+                        </p>
+                        <h3 className="mt-1 truncate font-bold text-lg">{item.title}</h3>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {getContentMetaLabel(item)} &bull; Updated{' '}
+                          {new Date(item.updatedAt).toLocaleDateString()}
+                        </p>
+                        {isPending && (
+                          <p className="mt-2 text-xs font-medium text-accent-light" role="status">
+                            {item.isDeleting ? 'Deleting...' : 'Saving...'}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => deleteContent(item.id)}
+                        disabled={isPending}
+                        className="p-2 rounded-full bg-danger/20 hover:bg-danger/40 text-danger transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Delete content"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <h2 className="text-xl font-heading font-bold flex items-center gap-2 mt-6">
             <BookOpen className="w-5 h-5 text-accent" /> Recent Sessions
           </h2>
 

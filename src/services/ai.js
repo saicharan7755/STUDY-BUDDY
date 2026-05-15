@@ -16,12 +16,12 @@ const timeoutFetch = async (resource, options = {}) => {
 const postAi = async (endpoint, body) => {
   let response;
   try {
-    response = await timeoutFetch(`/api/ai/${endpoint}`, {
+    response = await timeoutFetch('/.netlify/functions/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ endpoint, ...body }),
     });
   } catch (e) {
     if (e.name === 'AbortError') {

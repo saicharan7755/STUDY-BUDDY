@@ -14,6 +14,7 @@ import {
   generateFlashcards,
   GUEST_STUDY_STATE_KEY,
   persistGeneratedCards,
+  saveContent as saveContentRecord,
 } from '../services';
 import { MetaTags, FileUpload, ExportModal } from '../components/ui';
 import { getCharacterCountState, TEXT_LIMITS, validateStudyText } from '../utils';
@@ -175,6 +176,12 @@ const GuestMode = () => {
         topicId: 'guest-topic',
         cards,
       });
+
+      const savedContent = await saveContentRecord(uid, 'flashcards', {
+        content: { cards },
+        sourceText: sourceText || topic.trim() || 'Guest generated flashcards',
+      });
+      if (savedContent.error) throw new Error(savedContent.error.message);
 
       navigate(`/session/${sessionRef.id}`);
     } catch (e) {
