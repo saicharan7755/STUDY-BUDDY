@@ -1,4 +1,5 @@
 ﻿import { sanitizeText } from '../../lib/stringSanitize.js';
+import fetchWithAuth from '../utils/fetchWithAuth';
 
 const API_TIMEOUT_MS = 30000;
 
@@ -7,7 +8,7 @@ const timeoutFetch = async (resource, options = {}) => {
   const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   try {
-    return await fetch(resource, { ...options, signal: controller.signal });
+    return await fetchWithAuth(resource, { ...options, signal: controller.signal });
   } finally {
     window.clearTimeout(timeoutId);
   }

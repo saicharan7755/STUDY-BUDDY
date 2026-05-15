@@ -1,11 +1,4 @@
 import { createContext, useState, useEffect } from 'react';
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import { auth, googleProvider } from '../config/firebase';
 
 export const AuthContext = createContext();
 
@@ -13,44 +6,61 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const signIn = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Error signing in with Google', error);
-      throw error;
-    }
+  const fetchWithCreds = async (url, opts = {}) => {
+    const res = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
+    return res;
   };
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetchWithCreds('/.netlify/functions/auth-me', { method: 'GET' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user || null);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Error checking auth status', err);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    check();
+  }, []);
 
   const signInWithEmail = async (email, password) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
-      console.error('Error signing in with email', error);
-      throw error;
+      const res = await fetchWithCreds('/.netlify/functions/auth-login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Sign in failed');
+      }
+      const data = await res.json();
+      setUser(data.user || null);
+      return data.user;
+    } catch (err) {
+      console.error('Sign-in error', err);
+      throw err;
     }
   };
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
-    } catch (error) {
-      console.error('Error signing out', error);
+      await fetchWithCreds('/.netlify/functions/auth-logout', { method: 'POST' });
+      setUser(null);
+    } catch (err) {
+      console.error('Error signing out', err);
     }
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, loading, signIn, signInWithEmail, signOut, isAuthenticated: Boolean(user) }}
-    >
+    <AuthContext.Provider value={{ user, loading, signInWithEmail, signOut, isAuthenticated: Boolean(user) }}>
       {!loading && children}
     </AuthContext.Provider>
   );
