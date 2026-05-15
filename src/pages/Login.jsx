@@ -31,7 +31,8 @@ export default function Login() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const savedRoute = typeof window !== 'undefined' ? window.sessionStorage.getItem('cramAI_lastRoute') : null;
+  const from = location.state?.from?.pathname || savedRoute || '/dashboard';
 
   const validate = () => {
     const nextErrors = {};
@@ -59,6 +60,9 @@ export default function Login() {
     setSubmitting(true);
     try {
       await signInWithEmail(email.trim(), password);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('cramAI_lastRoute');
+      }
       navigate(from, { replace: true });
     } catch (err) {
       if (err.code === 'auth/wrong-password') {
@@ -84,6 +88,9 @@ export default function Login() {
     setGoogleLoading(true);
     try {
       await signIn();
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('cramAI_lastRoute');
+      }
       navigate(from, { replace: true });
     } catch (_error) {
       setFormError('Google sign-in was interrupted. Please try again.');

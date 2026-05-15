@@ -1,101 +1,213 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext(undefined);
+
+const AUTH_EVENT_KEY = 'cramAI_auth_event';
+const AUTH_CHECK_ENDPOINT = '/.netlify/functions/auth-me';
+const AUTH_LOGIN_ENDPOINT = '/.netlify/functions/auth-login';
+const AUTH_LOGOUT_ENDPOINT = '/.netlify/functions/auth-logout';
+const AUTH_REFRESH_ENDPOINT = '/.netlify/functions/auth-refresh';
+const TOKEN_REFRESH_MS = 12 * 60 * 1000; // refresh 3 minutes before expiry
+
+const broadcastAuthState = () => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(AUTH_EVENT_KEY, JSON.stringify({ ts: Date.now() }));
+  } catch (error) {
+    console.warn('Unable to broadcast auth state to other tabs', error);
+  }
+
+  window.dispatchEvent(new CustomEvent('cramAuthStateChanged'));
+};
+
+const fetchJson = async (url, options = {}) => {
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    const error = new Error(errorBody || `Request failed with status ${response.status}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.json();
+};
 
 export const AuthProvider = ({ children }) => {
-  const STORAGE_KEY = 'cramAI_user';
+  // The auth state starts in loading and never assumes unauthenticated.
+  // This prevents route wrappers from redirecting before the backend auth check completes.
+  const [authStatus, setAuthStatus] = useState('loading');
+  const [user, setUserState] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [accountDisabled, setAccountDisabled] = useState(false);
+  const [authError, setAuthError] = useState(null);
+  const refreshTimerRef = useRef(null);
+  const userRef = useRef(null);
 
-  const getStoredUser = () => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const [user, setUserState] = useState(getStoredUser);
-  const [loading, setLoading] = useState(true);
-
-  const setUser = (nextUser) => {
+  const setUser = useCallback((nextUser) => {
+    userRef.current = nextUser;
     setUserState(nextUser);
-    if (typeof window === 'undefined') return;
-    try {
-      if (nextUser) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-      } else {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
-    } catch (error) {
-      console.error('Unable to persist auth user', error);
-    }
-  };
-
-  const fetchWithCreds = async (url, opts = {}) => {
-    const res = await fetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...opts });
-    return res;
-  };
-
-  useEffect(() => {
-    const storedUser = getStoredUser();
-    const check = async () => {
-      try {
-        const res = await fetchWithCreds('/.netlify/functions/auth-me', { method: 'GET' });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user || storedUser);
-        } else {
-          setUser(storedUser);
-        }
-      } catch (err) {
-        console.error('Error checking auth status', err);
-        setUser(storedUser);
-      } finally {
-        setLoading(false);
-      }
-    };
-    check();
   }, []);
 
-  const signInWithEmail = async (email, password) => {
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
+
+  const refreshAuthToken = useCallback(async () => {
     try {
-      const res = await fetchWithCreds('/.netlify/functions/auth-login', {
+      const response = await fetch(AUTH_REFRESH_ENDPOINT, {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        credentials: 'include',
       });
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        const errorMessage = json.error || 'Sign in failed';
-        const error = new Error(errorMessage);
-        if (json.code) {
-          error.code = json.code;
-        } else if (/wrong password/i.test(errorMessage)) {
-          error.code = 'auth/wrong-password';
-        } else if (/user not found|no account/i.test(errorMessage)) {
-          error.code = 'auth/user-not-found';
-        } else if (/locked|too many attempts/i.test(errorMessage)) {
-          error.code = 'auth/account-locked';
-        }
-        throw error;
+      if (!response.ok) {
+        throw new Error('Unable to refresh session');
       }
 
-      const data = await res.json();
-      setUser(data.user || null);
-      return data.user;
-    } catch (err) {
-      console.error('Sign-in error', err);
-      if (err instanceof TypeError) {
-        const networkError = new Error('Connection issue. Please check your internet and try again.');
-        networkError.code = 'auth/network-request-failed';
-        throw networkError;
-      }
-      throw err;
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed', error);
+      setSessionExpired(true);
+      return false;
     }
-  };
+  }, []);
 
-  const signUpWithEmail = async (email, password) => {
+  const scheduleRefresh = useCallback(() => {
+    clearRefreshTimer();
+
+    refreshTimerRef.current = window.setTimeout(async () => {
+      const ok = await refreshAuthToken();
+      if (ok) {
+        scheduleRefresh();
+      }
+    }, TOKEN_REFRESH_MS);
+  }, [clearRefreshTimer, refreshAuthToken]);
+
+  const fetchAuthStatus = useCallback(async () => {
+    if (authStatus !== 'loading') {
+      setAuthStatus('loading');
+    }
+
+    setAuthError(null);
+
+    try {
+      const data = await fetchJson(AUTH_CHECK_ENDPOINT, { method: 'GET' });
+
+      if (data?.user) {
+        setUser(data.user);
+        setAccountDisabled(false);
+        setAuthStatus('authenticated');
+        scheduleRefresh();
+      } else {
+        setUser(null);
+        setAuthStatus('unauthenticated');
+      }
+    } catch (error) {
+      if (error.status === 403) {
+        setUser(null);
+        setAccountDisabled(true);
+        setAuthStatus('unauthenticated');
+        return;
+      }
+
+      console.error('Auth status check failed', error);
+      setAuthError(error.message || 'Unable to verify auth status.');
+      setAuthStatus('loading');
+    }
+  }, [authStatus, scheduleRefresh]);
+
+  useEffect(() => {
+    fetchAuthStatus();
+
+    const handleAuthStateChanged = () => {
+      fetchAuthStatus();
+    };
+
+    const handleStorageEvent = (event) => {
+      if (event.key === AUTH_EVENT_KEY) {
+        fetchAuthStatus();
+      }
+    };
+
+    const handleSessionExpired = () => {
+      setSessionExpired(true);
+    };
+
+    window.addEventListener('cramAuthStateChanged', handleAuthStateChanged);
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('cramSessionExpired', handleSessionExpired);
+
+    return () => {
+      window.removeEventListener('cramAuthStateChanged', handleAuthStateChanged);
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('cramSessionExpired', handleSessionExpired);
+      clearRefreshTimer();
+    };
+  }, [clearRefreshTimer, fetchAuthStatus]);
+
+  const login = useCallback(
+    async (email, password) => {
+      if (!email?.trim() || !password) {
+        throw new Error('Enter your email and password.');
+      }
+
+      try {
+        const data = await fetchJson(AUTH_LOGIN_ENDPOINT, {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+
+        setUser(data.user || null);
+        setAuthStatus('authenticated');
+        setAccountDisabled(false);
+        setAuthError(null);
+        scheduleRefresh();
+        broadcastAuthState();
+        return data.user;
+      } catch (error) {
+        console.error('Login failed', error);
+        if (error instanceof TypeError) {
+          const networkError = new Error('Connection issue. Please check your internet and try again.');
+          networkError.code = 'auth/network-request-failed';
+          throw networkError;
+        }
+
+        const err = new Error(error.message || 'Sign in failed');
+        if (error.status === 401) {
+          err.code = 'auth/wrong-password';
+        }
+        throw err;
+      }
+    },
+    [scheduleRefresh]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await fetch(AUTH_LOGOUT_ENDPOINT, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout failed', error);
+    } finally {
+      clearRefreshTimer();
+      setUser(null);
+      setAuthStatus('unauthenticated');
+      broadcastAuthState();
+    }
+  }, [clearRefreshTimer]);
+
+  const signup = useCallback(async (email, password) => {
     if (!email?.trim() || !password) {
       throw new Error('Enter your email and a password.');
     }
@@ -103,33 +215,53 @@ export const AuthProvider = ({ children }) => {
       throw new Error('Password must be at least 8 characters.');
     }
 
-    const user = { id: `user-${Date.now()}`, email: email.trim() };
-    setUser(user);
-    return user;
-  };
+    // Demo-only sign-up flow. Replace with a real registration endpoint when available.
+    const newUser = { id: `user-${Date.now()}`, email: email.trim() };
+    setUser(newUser);
+    setAuthStatus('authenticated');
+    setAccountDisabled(false);
+    setAuthError(null);
+    scheduleRefresh();
+    broadcastAuthState();
+    return newUser;
+  }, [scheduleRefresh]);
 
-  const signOut = async () => {
-    try {
-      await fetchWithCreds('/.netlify/functions/auth-logout', { method: 'POST' });
-    } catch (err) {
-      console.error('Error signing out', err);
-    } finally {
-      setUser(null);
-    }
-  };
+  const retryAuth = useCallback(() => {
+    setAuthError(null);
+    setAuthStatus('loading');
+    fetchAuthStatus();
+  }, [fetchAuthStatus]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        signInWithEmail,
-        signUpWithEmail,
-        signOut,
-        isAuthenticated: Boolean(user),
-      }}
-    >
-      {!loading && children}
-    </AuthContext.Provider>
+  const clearSessionExpired = useCallback(() => {
+    setSessionExpired(false);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      authStatus,
+      isLoading: authStatus === 'loading',
+      isAuthenticated: authStatus === 'authenticated',
+      sessionExpired,
+      accountDisabled,
+      authError,
+      login,
+      logout,
+      signup,
+      retryAuth,
+      clearSessionExpired,
+      signInWithEmail: login,
+      signUpWithEmail: signup,
+      signIn: async () => {
+        throw new Error('Google sign-in is currently unavailable. Please use email login.');
+      },
+    }),
+    [accountDisabled, authError, authStatus, clearSessionExpired, login, logout, retryAuth, sessionExpired, signup, user]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

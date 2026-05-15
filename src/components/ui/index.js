@@ -21,4 +21,7 @@ export { default as ToastProvider } from './ToastProvider';
 export { ToastContext } from './ToastContext';
 export { default as RateLimitBanner } from './RateLimitBanner';
 export { default as SessionExpiredModal } from './SessionExpiredModal';
+export { default as BrandedLoadingScreen } from './BrandedLoadingScreen';
+export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as PublicOnlyRoute } from './PublicOnlyRoute';
 export { default as TopicInput } from './TopicInput';
