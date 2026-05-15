@@ -64,15 +64,33 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || 'Sign in failed');
+        const errorMessage = json.error || 'Sign in failed';
+        const error = new Error(errorMessage);
+        if (json.code) {
+          error.code = json.code;
+        } else if (/wrong password/i.test(errorMessage)) {
+          error.code = 'auth/wrong-password';
+        } else if (/user not found|no account/i.test(errorMessage)) {
+          error.code = 'auth/user-not-found';
+        } else if (/locked|too many attempts/i.test(errorMessage)) {
+          error.code = 'auth/account-locked';
+        }
+        throw error;
       }
+
       const data = await res.json();
       setUser(data.user || null);
       return data.user;
     } catch (err) {
       console.error('Sign-in error', err);
+      if (err instanceof TypeError) {
+        const networkError = new Error('Connection issue. Please check your internet and try again.');
+        networkError.code = 'auth/network-request-failed';
+        throw networkError;
+      }
       throw err;
     }
   };

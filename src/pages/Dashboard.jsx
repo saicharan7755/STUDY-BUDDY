@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRetry, useToast } from '../hooks';
 import {
   collection as firestoreCollection,
   query as firestoreQuery,
@@ -75,6 +76,8 @@ const Dashboard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [exportDeck, setExportDeck] = useState(null);
+  const toast = useToast();
+  const { execute: generateStudyPlanWithRetry, retryCount } = useRetry(generateStudyPlan, 3, 1000);
 
   const _loadSessions = useCallback(async () => {
     if (!user?.uid) return;
@@ -146,7 +149,8 @@ const Dashboard = () => {
     setIsGenerating(true);
     setError(null);
     try {
-      const plan = await generateStudyPlan(data.syllabus, data.time, data.difficulty);
+      const plan = await generateStudyPlanWithRetry(data.syllabus, data.time, data.difficulty);
+      toast.success('Study plan generated.');
 
       // Create session in Firestore
       const sessionRef = await firestoreAddDoc(
@@ -166,7 +170,13 @@ const Dashboard = () => {
 
       navigate(`/session/${sessionRef.id}`);
     } catch (err) {
-      setError(err.message || 'Failed to generate plan.');
+      const message = err.message || 'Failed to generate plan.';
+      setError(message);
+      toast.error(message, {
+        description: retryCount
+          ? `Retrying failed requests... (attempt ${retryCount} of 3)`
+          : 'Please try again in a moment.',
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -198,6 +208,11 @@ const Dashboard = () => {
           {error && (
             <div className="bg-danger/10 border border-danger/50 text-danger-light p-4 rounded-xl text-sm">
               {error}
+              {retryCount > 0 && (
+                <p className="mt-2 text-xs text-gray-300">
+                  Retrying... (attempt {retryCount} of 3)
+                </p>
+              )}
             </div>
           )}
 

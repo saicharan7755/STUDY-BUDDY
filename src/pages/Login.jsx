@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Brain, Loader2 } from 'lucide-react';
-import { useAuth } from '../hooks';
-import { MetaTags, Toast } from '../components/ui';
+import { useAuth, useToast } from '../hooks';
+import { MetaTags } from '../components/ui';
+import { AUTH_ERROR_MESSAGES } from '../constants/errorMessages';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,17 +18,14 @@ export default function Login() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [toast, setToast] = useState(() =>
-    searchParams.get('reset') === 'success'
-      ? { type: 'success', message: 'Password updated. Sign in with your new password.' }
-      : null
-  );
+  const toast = useToast();
 
   useEffect(() => {
     if (searchParams.get('reset') === 'success') {
+      toast.success('Password updated. Sign in with your new password.');
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, toast]);
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -62,10 +60,20 @@ export default function Login() {
     try {
       await signInWithEmail(email.trim(), password);
       navigate(from, { replace: true });
-    } catch (_error) {
-      setFormError(
-        'We could not sign you in with those credentials. Check your email and password.'
-      );
+    } catch (err) {
+      if (err.code === 'auth/wrong-password') {
+        setFormError(AUTH_ERROR_MESSAGES.wrongPassword(2));
+      } else if (err.code === 'auth/user-not-found') {
+        setFormError(AUTH_ERROR_MESSAGES.accountNotFound);
+      } else if (err.code === 'auth/account-locked') {
+        setFormError(AUTH_ERROR_MESSAGES.accountLocked('a few minutes'));
+      } else if (err.code === 'auth/network-request-failed') {
+        setFormError(AUTH_ERROR_MESSAGES.networkError);
+      } else {
+        setFormError(
+          'We could not sign you in with those credentials. Check your email and password.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -79,6 +87,7 @@ export default function Login() {
       navigate(from, { replace: true });
     } catch (_error) {
       setFormError('Google sign-in was interrupted. Please try again.');
+      toast.warning('Google sign-in was interrupted. Please try again.');
     } finally {
       setGoogleLoading(false);
     }
@@ -207,8 +216,6 @@ export default function Login() {
           </p>
         </div>
       </section>
-
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 }

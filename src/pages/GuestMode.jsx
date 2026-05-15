@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 import { Download, Loader2, LogIn, Save, Sparkles } from 'lucide-react';
 import { auth, db } from '../config/firebase';
-import { useAuth, useLocalStorage, useStudyData } from '../hooks';
+import { useAuth, useLocalStorage, useStudyData, useToast } from '../hooks';
 import {
   createGuestStudyState,
   generateFlashcards,
@@ -16,19 +16,39 @@ import {
   persistGeneratedCards,
   saveContent as saveContentRecord,
 } from '../services';
-import { MetaTags, FileUpload, ExportModal } from '../components/ui';
+import { MetaTags, FileUpload, ExportModal, RateLimitBanner, SessionExpiredModal } from '../components/ui';
 import { getCharacterCountState, TEXT_LIMITS, validateStudyText } from '../utils';
 import { readFlashcardsFromShareParams } from '../utils/exportUtils';
 
 const GuestMode = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, signIn } = useAuth();
+  const { user, isAuthenticated, signIn, signInWithEmail } = useAuth();
+  const toast = useToast();
   const { saveDeck } = useStudyData();
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [persistedState, setPersistedState] = useLocalStorage(
     GUEST_STUDY_STATE_KEY,
     createGuestStudyState()
   );
+
+  useEffect(() => {
+    const handleSessionExpiry = () => setSessionExpired(true);
+    window.addEventListener('cramSessionExpired', handleSessionExpiry);
+    return () => window.removeEventListener('cramSessionExpired', handleSessionExpiry);
+  }, []);
+
+  const handleSessionLogin = async (email, password) => {
+    await signInWithEmail(email, password);
+    setSessionExpired(false);
+    toast.success('You are signed back in.');
+  };
+
+  const handleSaveWorkToClipboard = async () => {
+    await navigator.clipboard.writeText(topic || '');
+    toast.success('Your current input was copied to the clipboard.');
+  };
 
   const [topic, setTopic] = useState(persistedState.topic || '');
   const [count, setCount] = useState(persistedState.count || 10);
@@ -140,7 +160,14 @@ const GuestMode = () => {
       setCards(generated);
       saveDeck(topic.trim(), generated);
     } catch (e) {
-      setError(e.message || 'Failed to generate flashcards.');
+      if (e?.type === 'RATE_LIMIT') {
+        setRateLimitSeconds(e.retryAfter || 60);
+        toast.warning(e.message || 'You are generating too fast. Please wait a moment.');
+      } else {
+        const message = e?.message || 'Failed to generate flashcards.';
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -269,6 +296,13 @@ const GuestMode = () => {
                 </select>
               </div>
             </div>
+            {rateLimitSeconds > 0 && (
+              <RateLimitBanner
+                secondsRemaining={rateLimitSeconds}
+                onExpire={() => setRateLimitSeconds(0)}
+                onClose={() => setRateLimitSeconds(0)}
+              />
+            )}
             {error && !isLoading && (
               <div className="mt-4 rounded-2xl border border-danger/50 bg-danger/10 p-4 text-sm text-danger-light">
                 <p>{error}</p>
@@ -284,7 +318,7 @@ const GuestMode = () => {
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <motion.button
                 type="button"
-                disabled={isLoading || !isValid}
+                disabled={isLoading || !isValid || rateLimitSeconds > 0}
                 onClick={handleGenerate}
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-white hover:bg-accent-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors touch-target"
                 whileHover={isLoading || !isValid ? {} : { scale: 1.02 }}
@@ -392,6 +426,13 @@ const GuestMode = () => {
           </section>
         </div>
       </div>
+      <SessionExpiredModal
+        isOpen={sessionExpired}
+        onClose={() => setSessionExpired(false)}
+        onSaveWork={handleSaveWorkToClipboard}
+        onLogin={handleSessionLogin}
+        currentInput={topic}
+      />
       <ExportModal
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}

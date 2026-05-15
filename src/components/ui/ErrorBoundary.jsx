@@ -1,5 +1,19 @@
 import React from 'react';
-import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
+
+const reportErrorToService = async (error, info) => {
+  try {
+    if (typeof window !== 'undefined' && window.navigator && window.fetch) {
+      await fetch('/.netlify/functions/log-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: error.message, stack: error.stack, componentStack: info.componentStack }),
+      });
+    }
+  } catch (reportError) {
+    console.error('Error reporting failed', reportError);
+  }
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,6 +26,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
+    reportErrorToService(error, info);
     if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught an error:', error, info);
     }
@@ -34,14 +49,13 @@ class ErrorBoundary extends React.Component {
                 <AlertTriangle className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-heading font-bold text-white">Something went wrong</h1>
+                <h1 className="text-3xl font-heading font-bold text-white">Something unexpected happened</h1>
                 <p className="mt-3 text-sm leading-relaxed text-gray-300">
-                  We hit an unexpected issue while rendering the page.
-                  You can try again or go back home.
+                  This has been reported to our team. You can refresh the page or return to the dashboard.
                 </p>
               </div>
               <div className="w-full rounded-3xl bg-midnight/70 p-4 text-left text-sm text-gray-300">
-                <p className="font-semibold text-white">Error:</p>
+                <p className="font-semibold text-white">Details:</p>
                 <p className="break-words">{this.state.error?.message || 'Unknown rendering error.'}</p>
               </div>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -50,14 +64,14 @@ class ErrorBoundary extends React.Component {
                   onClick={this.reset}
                   className="inline-flex items-center justify-center rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-accent-light disabled:opacity-60"
                 >
-                  <RefreshCcw className="w-4 h-4" /> Try Again
+                  <RefreshCcw className="w-4 h-4" /> Refresh Page
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.location.assign('/')}
+                  onClick={() => window.location.assign('/dashboard')}
                   className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
-                  Go Home
+                  <Home className="w-4 h-4" /> Go to Dashboard
                 </button>
               </div>
             </div>

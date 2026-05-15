@@ -1,7 +1,33 @@
 ﻿import { sanitizeText } from '../../lib/stringSanitize.js';
 import fetchWithAuth from '../utils/fetchWithAuth';
+import { AI_ERROR_MESSAGES, AUTH_ERROR_MESSAGES } from '../constants/errorMessages';
 
-const API_TIMEOUT_MS = 30000;
+const API_TIMEOUT_MS = 16000;
+const MAX_WORDS = 1200;
+
+const parseRetryAfterHeader = (value) => {
+  if (!value) return 60;
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric) && numeric > 0) {
+    return numeric;
+  }
+
+  const date = Date.parse(value);
+  if (!Number.isNaN(date)) {
+    return Math.max(0, Math.round((date - Date.now()) / 1000));
+  }
+
+  return 60;
+};
+
+const createAppError = (message, options = {}) => {
+  const error = new Error(message);
+  if (options.type) error.type = options.type;
+  if (options.status) error.status = options.status;
+  if (options.retryAfter !== undefined) error.retryAfter = options.retryAfter;
+  if (options.maxWords !== undefined) error.maxWords = options.maxWords;
+  return error;
+};
 
 const timeoutFetch = async (resource, options = {}) => {
   const controller = new AbortController();
@@ -15,6 +41,19 @@ const timeoutFetch = async (resource, options = {}) => {
 };
 
 const postAi = async (endpoint, body) => {
+  const hasValue = Object.values(body).some((value) => {
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (Array.isArray(value)) return value.length > 0;
+    return Boolean(value);
+  });
+
+  if (!hasValue) {
+    throw createAppError(AI_ERROR_MESSAGES.emptyInput, {
+      type: 'EMPTY_INPUT',
+      status: 400,
+    });
+  }
+
   let response;
   try {
     response = await timeoutFetch('/.netlify/functions/generate', {
@@ -26,41 +65,74 @@ const postAi = async (endpoint, body) => {
     });
   } catch (e) {
     if (e.name === 'AbortError') {
-      throw new Error('The AI request timed out after 30 seconds. Please try again.', {
-        cause: e,
+      throw createAppError(AI_ERROR_MESSAGES.timeout, {
+        type: 'TIMEOUT',
+        status: 408,
       });
     }
     if (e instanceof TypeError) {
-      throw new Error('Network connection error. Check your internet connection and try again.', {
-        cause: e,
+      throw createAppError(AUTH_ERROR_MESSAGES.networkError, {
+        type: 'NETWORK_ERROR',
       });
     }
     throw e;
   }
 
   if (!response.ok) {
+    const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'));
     const errorText = await response.text();
-    let parsedError;
+    let parsedError = null;
+
     try {
       parsedError = JSON.parse(errorText);
-    } catch (e) {
-      if (!(e instanceof SyntaxError)) {
-        throw e;
-      }
+    } catch {
+      parsedError = null;
     }
 
-    const rawMessage = parsedError?.error || errorText || 'AI request failed.';
+    const rawMessage = parsedError?.error || errorText || `AI request failed with status ${response.status}.`;
+
+    if (response.status === 429) {
+      throw createAppError(AI_ERROR_MESSAGES.rateLimit(retryAfter), {
+        type: 'RATE_LIMIT',
+        status: 429,
+        retryAfter,
+      });
+    }
+
+    if (response.status === 503) {
+      throw createAppError(AI_ERROR_MESSAGES.serviceUnavailable, {
+        type: 'SERVICE_UNAVAILABLE',
+        status: 503,
+      });
+    }
+
+    if (response.status === 413 || /length|word|long/i.test(rawMessage)) {
+      throw createAppError(AI_ERROR_MESSAGES.contentTooLong(MAX_WORDS), {
+        type: 'CONTENT_TOO_LONG',
+        status: 413,
+        maxWords: MAX_WORDS,
+      });
+    }
+
     if (/quota/i.test(rawMessage)) {
-      throw new Error('API quota exceeded. Please wait before trying again.');
+      throw createAppError(AI_ERROR_MESSAGES.rateLimit(retryAfter), {
+        type: 'RATE_LIMIT',
+        status: 429,
+        retryAfter,
+      });
     }
 
-    throw new Error(rawMessage);
+    throw createAppError(rawMessage, {
+      status: response.status,
+    });
   }
 
   try {
     return await response.json();
   } catch {
-    throw new Error('Empty or invalid AI response. Please try again.');
+    throw createAppError('Empty or invalid AI response. Please try again.', {
+      type: 'INVALID_RESPONSE',
+    });
   }
 };
 
@@ -116,7 +188,9 @@ export const generateFlashcards = async (topic, count = 10) => {
   const result = await postAi('flashcards', payload);
 
   if (!result || !Array.isArray(result.flashcards) || result.flashcards.length === 0) {
-    throw new Error('Received empty or invalid AI response. Please try again.');
+    throw createAppError('Received empty or invalid AI response. Please try again.', {
+      type: 'INVALID_RESPONSE',
+    });
   }
 
   return result;

@@ -1,5 +1,4 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
-import { Toast } from '../components/ui';
 import {
   deleteContent as deleteContentRecord,
   getUserContent,
@@ -7,10 +6,11 @@ import {
   updateContent as updateContentRecord,
 } from '../services/contentService';
 import { useAuth } from '../hooks/useAuth';
+import useToast from '../hooks/useToast';
+import { DATA_ERROR_MESSAGES } from '../constants/errorMessages';
 
 export const ContentContext = createContext(undefined);
 
-const rollbackMessage = 'Failed to save changes. Your previous version has been restored.';
 const getCacheKey = (userId) => `cram_content_cache_${userId}`;
 
 const readCachedContent = (userId) => {
@@ -61,7 +61,7 @@ export const ContentProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [pendingItemIds, setPendingItemIds] = useState([]);
-  const [toast, setToast] = useState(null);
+  const toast = useToast();
 
   const setPending = useCallback((contentId, isPending) => {
     setPendingItemIds((prev) => {
@@ -70,14 +70,10 @@ export const ContentProvider = ({ children }) => {
     });
   }, []);
 
-  const showRollbackToast = useCallback(() => {
-    setToast({ message: rollbackMessage, type: 'danger' });
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(null), 3600);
-    return () => window.clearTimeout(timer);
+  const showRollbackToast = useCallback((contentType) => {
+    toast.error(DATA_ERROR_MESSAGES.saveFailed(contentType), {
+      description: "Your changes are safe locally and will retry automatically.",
+    });
   }, [toast]);
 
   const refreshContent = useCallback(async () => {
@@ -95,6 +91,9 @@ export const ContentProvider = ({ children }) => {
     const result = await getUserContent(userId);
     if (result.error) {
       setError(result.error);
+      toast.error(DATA_ERROR_MESSAGES.loadFailed('content'), {
+        action: { label: 'Retry', onClick: refreshContent },
+      });
       setIsLoading(false);
       return result;
     }
@@ -104,7 +103,7 @@ export const ContentProvider = ({ children }) => {
     setError(null);
     setIsLoading(false);
     return result;
-  }, [userId]);
+  }, [toast, userId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -135,7 +134,7 @@ export const ContentProvider = ({ children }) => {
         setContent(previousContent);
         setPending(draft.id, false);
         setError(result.error);
-        showRollbackToast();
+        showRollbackToast('flashcards');
         return result;
       }
 
@@ -179,7 +178,9 @@ export const ContentProvider = ({ children }) => {
         setContent(previousContent);
         setPending(contentId, false);
         setError(result.error);
-        showRollbackToast();
+        toast.error(DATA_ERROR_MESSAGES.saveFailed('content'), {
+          description: 'Could not update this item. Your previous version has been restored.',
+        });
         return result;
       }
 
@@ -188,7 +189,7 @@ export const ContentProvider = ({ children }) => {
       setError(null);
       return result;
     },
-    [content, setPending, showRollbackToast, userId]
+    [content, setPending, toast, userId]
   );
 
   const deleteContent = useCallback(
@@ -210,7 +211,7 @@ export const ContentProvider = ({ children }) => {
         setContent(previousContent);
         setPending(contentId, false);
         setError(result.error);
-        showRollbackToast();
+        toast.error(DATA_ERROR_MESSAGES.deleteFailed);
         return result;
       }
 
@@ -219,7 +220,7 @@ export const ContentProvider = ({ children }) => {
       setError(null);
       return result;
     },
-    [content, setPending, showRollbackToast, userId]
+    [content, setPending, toast, userId]
   );
 
   const value = useMemo(
@@ -246,10 +247,5 @@ export const ContentProvider = ({ children }) => {
     ]
   );
 
-  return (
-    <ContentContext.Provider value={value}>
-      {children}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </ContentContext.Provider>
-  );
+  return <ContentContext.Provider value={value}>{children}</ContentContext.Provider>;
 };
