@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { AlertCircle, Brain, Loader2 } from 'lucide-react';
 import { auth } from '../config/firebase';
@@ -37,11 +37,24 @@ export default function ResetPasswordPage() {
 
   const strength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
 
+  const location = useLocation();
+
   useEffect(() => {
     let active = true;
 
     const verifyToken = async () => {
       if (!resetCode || (mode && mode !== 'resetPassword')) {
+        if (!resetCode && location.pathname === '/reset-password') {
+          navigate('/forgot-password', {
+            replace: true,
+            state: {
+              errorMessage:
+                'This reset link is invalid or expired. Please request a new one.',
+            },
+          });
+          return;
+        }
+
         setTokenError('This reset link is invalid or missing a required token.');
         setCheckingToken(false);
         return;
@@ -66,7 +79,7 @@ export default function ResetPasswordPage() {
     return () => {
       active = false;
     };
-  }, [mode, resetCode]);
+  }, [location.pathname, mode, navigate, resetCode]);
 
   const validate = () => {
     const nextErrors = {};

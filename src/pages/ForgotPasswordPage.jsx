@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Brain, CheckCircle2, Loader2 } from 'lucide-react';
 import { auth } from '../config/firebase';
@@ -134,6 +134,11 @@ export default function ForgotPasswordPage() {
               </div>
 
               <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+                {redirectMessage && (
+                  <div className="rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3 text-sm text-accent-light">
+                    {redirectMessage}
+                  </div>
+                )}
                 <div>
                   <label
                     htmlFor="forgot-email"
