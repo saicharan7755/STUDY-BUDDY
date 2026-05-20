@@ -1,4 +1,6 @@
-import { verify } from 'jsonwebtoken';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { verify } = require('jsonwebtoken');
 
 function parseCookies(cookieHeader) {
   const cookies = {};
