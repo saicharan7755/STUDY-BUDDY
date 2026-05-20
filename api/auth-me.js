@@ -1,13 +1,21 @@
 import { verify } from 'jsonwebtoken';
-import { parse } from 'cookie';
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, ...rest] = cookie.trim().split('=');
+    if (name) cookies[name.trim()] = rest.join('=').trim();
+  });
+  return cookies;
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const cookieHeader = req.headers?.cookie || '';
-  const cookies = parse(cookieHeader || '');
+  const cookies = parseCookies(req.headers?.cookie);
   const accessToken = cookies.accessToken;
 
   if (!accessToken) {

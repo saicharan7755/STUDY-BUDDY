@@ -1,24 +1,28 @@
 import { verify, sign } from 'jsonwebtoken';
-import { serialize, parse } from 'cookie';
 
-const ACCESS_TOKEN_EXP = 15 * 60; // 15 minutes
-function createCookie(name, value, maxAge) {
-  return serialize(name, value, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-    maxAge,
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, ...rest] = cookie.trim().split('=');
+    if (name) cookies[name.trim()] = rest.join('=').trim();
   });
+  return cookies;
 }
+
+function createCookie(name, value, maxAge) {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `${name}=${value}; HttpOnly${secure}; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
+}
+
+const ACCESS_TOKEN_EXP = 15 * 60;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const cookieHeader = req.headers?.cookie || '';
-  const cookies = parse(cookieHeader || '');
+  const cookies = parseCookies(req.headers?.cookie);
   const refreshToken = cookies.refreshToken;
 
   if (!refreshToken) {
@@ -33,8 +37,8 @@ export default async function handler(req, res) {
     const userId = payload.sub;
 
     const newAccess = sign({ sub: userId }, jwtSecret, { expiresIn: ACCESS_TOKEN_EXP });
-
     const cookie = createCookie('accessToken', newAccess, ACCESS_TOKEN_EXP);
+
     res.setHeader('Set-Cookie', cookie);
     return res.status(200).json({ ok: true });
   } catch {

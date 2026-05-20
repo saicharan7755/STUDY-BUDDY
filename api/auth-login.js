@@ -1,18 +1,12 @@
 import { sign } from 'jsonwebtoken';
-import { serialize } from 'cookie';
-
-const ACCESS_TOKEN_EXP = 15 * 60; // 15 minutes
-const REFRESH_TOKEN_EXP = 7 * 24 * 60 * 60; // 7 days
 
 function createCookie(name, value, maxAge) {
-  return serialize(name, value, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    path: '/',
-    maxAge,
-  });
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  return `${name}=${value}; HttpOnly${secure}; SameSite=Strict; Path=/; Max-Age=${maxAge}`;
 }
+
+const ACCESS_TOKEN_EXP = 15 * 60;
+const REFRESH_TOKEN_EXP = 7 * 24 * 60 * 60;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -30,7 +24,6 @@ export default async function handler(req, res) {
 
   const { email, password } = body;
 
-  // Simple demo authentication - replace with real user validation
   const demoEmail = process.env.DEMO_USER_EMAIL || 'user@example.com';
   const demoPass = process.env.DEMO_USER_PASSWORD || 'password123';
 
