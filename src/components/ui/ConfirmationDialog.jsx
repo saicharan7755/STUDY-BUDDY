@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { X, ShieldAlert, TriangleAlert } from 'lucide-react';
-
+import { X, AlertTriangle, ShieldAlert } from "lucide-react";
 const focusableSelectors = [
   'a[href]',
   'button:not([disabled])',
@@ -164,7 +163,7 @@ const ConfirmationDialog = ({
                 {type === 'danger' ? (
                   <ShieldAlert className="h-5 w-5" aria-hidden="true" />
                 ) : (
-                  <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
                 )}
               </div>
               <div className="min-w-0">

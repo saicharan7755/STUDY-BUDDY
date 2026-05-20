@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { Undo2, X } from 'lucide-react';
+import { Undo2, X } from "lucide-react";
 
 const UndoToast = ({
   message,
