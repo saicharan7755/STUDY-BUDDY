@@ -1,0 +1,20 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "env": {
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "ALLOWED_ORIGINS": "@allowed_origins",
+    "PUBLIC_API_KEY": "@public_api_key"
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

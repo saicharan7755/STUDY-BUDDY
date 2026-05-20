@@ -96,6 +96,32 @@ app.use(
 app.use(express.json({ limit: '30kb' }));
 app.use(express.urlencoded({ extended: false }));
 
+// CORS Middleware - Send proper CORS headers for preflight and actual requests
+app.use((req, res, next) => {
+  const originHeader = req.headers.origin;
+  
+  // Check if origin is in allowed list
+  if (originHeader && ALLOWED_ORIGINS.includes(originHeader)) {
+    res.set('Access-Control-Allow-Origin', originHeader);
+    res.set('Access-Control-Allow-Credentials', 'true');
+  } else if (ALLOWED_ORIGINS.length > 0) {
+    // For public APIs or when no origin header
+    res.set('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0]);
+  }
+  
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key');
+  res.set('Access-Control-Max-Age', '86400');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
+// Origin validation middleware
 app.use((req, res, next) => {
   const userAgent = req.headers['user-agent'];
 

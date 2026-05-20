@@ -2,8 +2,6 @@ import { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from './hooks';
-import useNavigationGuard from './hooks/useNavigationGuard';
-import { startDeadLinkScanner } from './utils/deadLinkScanner';
 import {
   Navbar,
   Footer,
@@ -29,42 +27,34 @@ const Signup = lazy(() => import('./pages/Signup'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
+const AUTH_BLOCKED_PATHS = ['/login', '/signup', '/forgot-password', '/reset-password'];
+
 const PublicLayout = () => <Outlet />;
 const DashboardLayout = () => <Outlet />;
+
+const AuthRedirect = () => {
+  const { authStatus, isAuthenticated } = useAuth();
+
+  if (authStatus === 'loading') {
+    return <BrandedLoadingScreen />;
+  }
+
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+};
 
 function App() {
   const { sessionExpired, clearSessionExpired, login } = useAuth();
   const location = useLocation();
 
-  useNavigationGuard();
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const blockedPaths = ['/login', '/signup', '/forgot-password', '/reset-password'];
-    const shouldPersist = !blockedPaths.some((path) => location.pathname.startsWith(path));
+    const shouldPersist = !AUTH_BLOCKED_PATHS.some((path) => location.pathname.startsWith(path));
 
     if (shouldPersist) {
       window.sessionStorage.setItem('cramAI_lastRoute', location.pathname + location.search);
     }
   }, [location]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const isDevelopment = typeof process !== 'undefined' && process.env.NODE_ENV !== 'production';
-    if (!isDevelopment) return;
-    startDeadLinkScanner();
-  }, []);
-
-  const AuthRedirect = () => {
-    const { authStatus, isAuthenticated } = useAuth();
-
-    if (authStatus === 'loading') {
-      return <BrandedLoadingScreen />;
-    }
-
-    return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-midnight text-white transition-opacity duration-150 ease-out selection:bg-accent selection:text-white">
@@ -85,6 +75,7 @@ function App() {
                 <Routes location={location}>
                   <Route element={<PublicLayout />}>
                     <Route path="/" element={<Landing />} />
+                    <Route path="/try" element={<GuestMode />} />
                     <Route element={<PublicOnlyRoute />}>
                       <Route path="/login" element={<Login />} />
                       <Route path="/signup" element={<Signup />} />

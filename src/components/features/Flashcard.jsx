@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, Shuffle, Undo2, Volume2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
@@ -9,7 +9,6 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
   const [shuffledCards, setShuffledCards] = useState([...cards]);
   const [reviewMessage, setReviewMessage] = useState('');
 
-  // Reset state when new cards arrive
   useEffect(() => {
     setShuffledCards([...cards]);
     setCurrentIndex(0);
@@ -18,36 +17,44 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     window.speechSynthesis.cancel();
   }, [cards]);
 
-  const handleFlip = () => setIsFlipped(!isFlipped);
+  const handleFlip = useCallback(() => {
+    setIsFlipped((current) => !current);
+  }, []);
 
   const speakText = useCallback((text, e) => {
-    e.stopPropagation(); // Prevent card from flipping
+    e.stopPropagation();
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   }, []);
 
-  const nextCard = () => {
-    if (currentIndex < shuffledCards.length - 1) {
+  const nextCard = useCallback(() => {
+    setCurrentIndex((index) => {
+      if (index >= shuffledCards.length - 1) return index;
       window.speechSynthesis.cancel();
       setIsFlipped(false);
       setReviewMessage('');
-      setTimeout(() => setCurrentIndex(currentIndex + 1), 150); // slight delay for flip un-animation
-    }
-  };
+      return index + 1;
+    });
+  }, [shuffledCards.length]);
 
-  const prevCard = () => {
-    if (currentIndex > 0) {
+  const prevCard = useCallback(() => {
+    setCurrentIndex((index) => {
+      if (index <= 0) return index;
       window.speechSynthesis.cancel();
       setIsFlipped(false);
       setReviewMessage('');
-      setTimeout(() => setCurrentIndex(currentIndex - 1), 150);
-    }
-  };
+      return index - 1;
+    });
+  }, []);
 
   const shuffle = () => {
-    const newCards = [...shuffledCards].sort(() => Math.random() - 0.5);
+    const newCards = [...shuffledCards];
+    for (let index = newCards.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [newCards[index], newCards[randomIndex]] = [newCards[randomIndex], newCards[index]];
+    }
     setShuffledCards(newCards);
     setCurrentIndex(0);
     setIsFlipped(false);
@@ -66,7 +73,6 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     }
   };
 
-  // Keyboard support
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
@@ -80,7 +86,7 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, isFlipped, shuffledCards.length]);
+  }, [handleFlip, nextCard, prevCard]);
 
   if (!shuffledCards.length) return null;
 
@@ -261,4 +267,4 @@ const Flashcard = ({ cards, onGrade, isSavingGrade = false }) => {
   );
 };
 
-export default React.memo(Flashcard);
+export default memo(Flashcard);

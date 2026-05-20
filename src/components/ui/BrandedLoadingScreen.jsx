@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import PropTypes from 'prop-types';
 import { Brain } from 'lucide-react';
 
 const BrandedLoadingScreen = ({ timeoutMs = 3000, onRetry, errorMessage }) => {
@@ -68,12 +67,6 @@ const BrandedLoadingScreen = ({ timeoutMs = 3000, onRetry, errorMessage }) => {
       </div>
     </div>
   );
-};
-
-BrandedLoadingScreen.propTypes = {
-  timeoutMs: PropTypes.number,
-  onRetry: PropTypes.func,
-  errorMessage: PropTypes.string,
 };
 
 export default BrandedLoadingScreen;

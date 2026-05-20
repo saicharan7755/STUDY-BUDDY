@@ -4,6 +4,7 @@ import { AI_ERROR_MESSAGES, AUTH_ERROR_MESSAGES } from '../constants/errorMessag
 
 const API_TIMEOUT_MS = 16000;
 const MAX_WORDS = 1200;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const parseRetryAfterHeader = (value) => {
   if (!value) return 60;
@@ -31,12 +32,23 @@ const createAppError = (message, options = {}) => {
 
 const timeoutFetch = async (resource, options = {}) => {
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   try {
     return await fetchWithAuth(resource, { ...options, signal: controller.signal });
   } finally {
-    window.clearTimeout(timeoutId);
+    clearTimeout(timeoutId);
+  }
+};
+
+const readErrorMessage = async (response) => {
+  const errorText = await response.text();
+
+  try {
+    const parsedError = JSON.parse(errorText);
+    return parsedError?.error || errorText;
+  } catch {
+    return errorText;
   }
 };
 
@@ -56,12 +68,13 @@ const postAi = async (endpoint, body) => {
 
   let response;
   try {
-    response = await timeoutFetch('/.netlify/functions/generate', {
+    const url = `${API_BASE_URL}/ai/${endpoint}`;
+    response = await timeoutFetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ endpoint, ...body }),
+      body: JSON.stringify(body),
     });
   } catch (e) {
     if (e.name === 'AbortError') {
@@ -80,16 +93,7 @@ const postAi = async (endpoint, body) => {
 
   if (!response.ok) {
     const retryAfter = parseRetryAfterHeader(response.headers.get('Retry-After'));
-    const errorText = await response.text();
-    let parsedError = null;
-
-    try {
-      parsedError = JSON.parse(errorText);
-    } catch {
-      parsedError = null;
-    }
-
-    const rawMessage = parsedError?.error || errorText || `AI request failed with status ${response.status}.`;
+    const rawMessage = (await readErrorMessage(response)) || `AI request failed with status ${response.status}.`;
 
     if (response.status === 429) {
       throw createAppError(AI_ERROR_MESSAGES.rateLimit(retryAfter), {

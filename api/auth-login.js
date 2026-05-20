@@ -14,16 +14,18 @@ function createCookie(name, value, maxAge) {
   });
 }
 
-export const handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let body = {};
-  try {
-    body = event.body ? JSON.parse(event.body) : {};
-  } catch {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON' });
+    }
   }
 
   const { email, password } = body;
@@ -33,7 +35,7 @@ export const handler = async (event) => {
   const demoPass = process.env.DEMO_USER_PASSWORD || 'password123';
 
   if (email !== demoEmail || password !== demoPass) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
+    return res.status(401).json({ error: 'Invalid credentials' });
   }
 
   const jwtSecret = process.env.JWT_SECRET || 'dev_secret';
@@ -54,12 +56,7 @@ export const handler = async (event) => {
     createCookie('refreshToken', refreshToken, REFRESH_TOKEN_EXP),
   ];
 
-  return {
-    statusCode: 200,
-    headers: {
-      'Set-Cookie': cookies,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ user }),
-  };
-};
+  res.setHeader('Set-Cookie', cookies);
+  res.setHeader('Content-Type', 'application/json');
+  return res.status(200).json({ user });
+}

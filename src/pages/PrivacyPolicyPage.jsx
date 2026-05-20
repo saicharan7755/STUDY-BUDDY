@@ -123,7 +123,7 @@ export default function PrivacyPolicyPage() {
                 <section id="third-party" className="scroll-mt-24">
                   <h2 className="text-2xl font-semibold text-white">Third-Party Services</h2>
                   <p className="mt-4 leading-8 text-gray-300">
-                    CRAM AI uses trusted third-party services to deliver the platform. This may include AI providers for study content processing, hosting providers such as Netlify, authentication and storage services like Firebase, and analytics tools for product improvement.
+                    CRAM AI uses trusted third-party services to deliver the platform. This may include AI providers for study content processing, hosting providers such as Vercel, authentication and storage services like Firebase, and analytics tools for product improvement.
                   </p>
                 </section>
 

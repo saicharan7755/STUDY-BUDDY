@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 
 const formatCountdown = (seconds) => {
   const minutes = Math.floor(seconds / 60);
@@ -9,6 +8,7 @@ const formatCountdown = (seconds) => {
 
 const RateLimitBanner = ({ secondsRemaining = 0, onExpire, onClose }) => {
   const [seconds, setSeconds] = useState(secondsRemaining);
+  const countdown = useMemo(() => formatCountdown(seconds), [seconds]);
 
   useEffect(() => {
     setSeconds(secondsRemaining);
@@ -35,8 +35,6 @@ const RateLimitBanner = ({ secondsRemaining = 0, onExpire, onClose }) => {
   }, [seconds, onExpire]);
 
   if (seconds <= 0) return null;
-
-  const countdown = useMemo(() => formatCountdown(seconds), [seconds]);
 
   return (
     <div className="mb-4 rounded-3xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 shadow-lg shadow-black/20 sm:flex sm:items-center sm:justify-between">

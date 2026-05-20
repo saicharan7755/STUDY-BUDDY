@@ -62,6 +62,7 @@ export const ContentProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [pendingItemIds, setPendingItemIds] = useState([]);
   const deleteTimers = useRef({});
+  const refreshContentRef = useRef(null);
   const toast = useToast();
 
   const setPending = useCallback((contentId, isPending) => {
@@ -115,7 +116,7 @@ export const ContentProvider = ({ children }) => {
     if (result.error) {
       setError(result.error);
       toast.error(DATA_ERROR_MESSAGES.loadFailed('content'), {
-        action: { label: 'Retry', onClick: refreshContent },
+        action: { label: 'Retry', onClick: () => refreshContentRef.current?.() },
       });
       setIsLoading(false);
       return result;
@@ -127,6 +128,10 @@ export const ContentProvider = ({ children }) => {
     setIsLoading(false);
     return result;
   }, [toast, userId]);
+
+  useEffect(() => {
+    refreshContentRef.current = refreshContent;
+  }, [refreshContent]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {

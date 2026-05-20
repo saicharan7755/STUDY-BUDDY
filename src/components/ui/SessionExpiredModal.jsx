@@ -6,7 +6,6 @@ const SessionExpiredModal = ({
   onClose,
   onSaveWork,
   onLogin,
-  currentInput = '',
   loginLabel = 'Log Back In',
   saveLabel = 'Save My Work',
 }) => {
@@ -23,7 +22,7 @@ const SessionExpiredModal = ({
     try {
       await onSaveWork?.();
       setWorkSaved(true);
-    } catch (error) {
+    } catch {
       setWorkSaved(false);
       setLoginError('Unable to save work to clipboard. Please copy manually.');
     }

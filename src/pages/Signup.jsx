@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Brain, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks';
-import { MetaTags, Toast } from '../components/ui';
+import { MetaTags } from '../components/ui';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

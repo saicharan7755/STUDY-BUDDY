@@ -1,4 +1,4 @@
-const refreshEndpoint = '/.netlify/functions/auth-refresh';
+const refreshEndpoint = '/api/auth-refresh';
 
 const dispatchSessionExpiry = () => {
   if (typeof window !== 'undefined') {

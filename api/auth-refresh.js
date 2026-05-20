@@ -2,8 +2,6 @@ import { verify, sign } from 'jsonwebtoken';
 import { serialize, parse } from 'cookie';
 
 const ACCESS_TOKEN_EXP = 15 * 60; // 15 minutes
-const REFRESH_TOKEN_EXP = 7 * 24 * 60 * 60; // 7 days
-
 function createCookie(name, value, maxAge) {
   return serialize(name, value, {
     httpOnly: true,
@@ -14,17 +12,17 @@ function createCookie(name, value, maxAge) {
   });
 }
 
-export const handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const cookieHeader = event.headers?.cookie || '';
+  const cookieHeader = req.headers?.cookie || '';
   const cookies = parse(cookieHeader || '');
   const refreshToken = cookies.refreshToken;
 
   if (!refreshToken) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'No refresh token' }) };
+    return res.status(401).json({ error: 'No refresh token' });
   }
 
   const refreshSecret = process.env.REFRESH_TOKEN_SECRET || 'dev_refresh_secret';
@@ -37,8 +35,9 @@ export const handler = async (event) => {
     const newAccess = sign({ sub: userId }, jwtSecret, { expiresIn: ACCESS_TOKEN_EXP });
 
     const cookie = createCookie('accessToken', newAccess, ACCESS_TOKEN_EXP);
-    return { statusCode: 200, headers: { 'Set-Cookie': cookie }, body: JSON.stringify({ ok: true }) };
-  } catch (err) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Invalid refresh token' }) };
+    res.setHeader('Set-Cookie', cookie);
+    return res.status(200).json({ ok: true });
+  } catch {
+    return res.status(401).json({ error: 'Invalid refresh token' });
   }
-};
+}

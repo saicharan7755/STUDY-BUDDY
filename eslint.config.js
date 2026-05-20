@@ -8,7 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 export default defineConfig([
   globalIgnores(['dist', '.storybook/static', 'coverage']),
   {
-    files: ['server.js', 'lib/**/*.js', 'netlify/**/*.{js,mjs}'],
+    files: ['server.js', 'setup-vercel.js', 'lib/**/*.js', 'api/**/*.{js,mjs}'],
     extends: [js.configs.recommended, prettierConfig],
     languageOptions: {
       globals: globals.node,
@@ -29,7 +29,7 @@ export default defineConfig([
   },
   {
     files: ['**/*.{js,jsx}'],
-    ignores: ['server.js', 'lib/**', 'netlify/**'],
+    ignores: ['server.js', 'setup-vercel.js', 'lib/**', 'api/**'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,

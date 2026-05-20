@@ -14,4 +14,8 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    minify: 'esbuild',
+    sourcemap: false,
+  },
 });

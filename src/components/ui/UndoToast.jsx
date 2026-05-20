@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUturnLeft, X } from 'lucide-react';
+import { Undo2, X } from 'lucide-react';
 
 const UndoToast = ({
   message,
@@ -15,7 +15,7 @@ const UndoToast = ({
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400">
-            <ArrowUturnLeft className="h-5 w-5" aria-hidden="true" />
+            <Undo2 className="h-5 w-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <p className="font-semibold text-sm text-white">{message}</p>

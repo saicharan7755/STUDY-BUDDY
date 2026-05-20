@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://study-buddy.netlify.app/sitemap.xml
+Sitemap: https://cram-ai.vercel.app/sitemap.xml

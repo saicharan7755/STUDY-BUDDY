@@ -1,10 +1,26 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Upload, X, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const SUPPORTED_TYPES = {
+  'application/pdf': 'pdf',
+  'text/plain': 'txt',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
 
 const FileUpload = ({ onTextExtracted, className = '' }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -14,22 +30,6 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
   const [error, setError] = useState(null);
   const [preview, setPreview] = useState('');
   const fileInputRef = useRef(null);
-
-  const SUPPORTED_TYPES = {
-    'application/pdf': 'pdf',
-    'text/plain': 'txt',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
-  };
-
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
 
   const extractTextFromPDF = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
@@ -56,7 +56,7 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
     return await file.text();
   };
 
-  const processFile = async (selectedFile) => {
+  const processFile = useCallback(async (selectedFile) => {
     setError(null);
     setIsProcessing(true);
     setProgress(0);
@@ -89,9 +89,9 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
       setIsProcessing(false);
       setProgress(0);
     }
-  };
+  }, [onTextExtracted]);
 
-  const validateFile = (selectedFile) => {
+  const validateFile = useCallback((selectedFile) => {
     if (!SUPPORTED_TYPES[selectedFile.type]) {
       throw new Error(`Unsupported file type. Please upload PDF, TXT, or DOCX files only.`);
     }
@@ -99,9 +99,9 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
     if (selectedFile.size > MAX_FILE_SIZE) {
       throw new Error(`File size (${formatFileSize(selectedFile.size)}) exceeds the 10MB limit.`);
     }
-  };
+  }, []);
 
-  const handleFileSelect = async (selectedFile) => {
+  const handleFileSelect = useCallback(async (selectedFile) => {
     try {
       validateFile(selectedFile);
       setFile(selectedFile);
@@ -111,7 +111,7 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
       setFile(null);
       setPreview('');
     }
-  };
+  }, [processFile, validateFile]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -121,7 +121,7 @@ const FileUpload = ({ onTextExtracted, className = '' }) => {
     if (droppedFile) {
       handleFileSelect(droppedFile);
     }
-  }, []);
+  }, [handleFileSelect]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();

@@ -55,25 +55,26 @@ const dashboardTiles = [
 
 const StudyProgressDashboard = () => {
   const { user } = useAuth();
+  const userId = user?.uid;
   const [stats, setStats] = useState(null);
 
   const loadStats = useCallback(() => {
-    if (!user?.uid) return;
-    setStats(loadStudyProgress(user.uid));
-  }, [user?.uid]);
+    if (!userId) return;
+    setStats(loadStudyProgress(userId));
+  }, [userId]);
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!userId) return;
     loadStats();
 
     const handleUpdate = (event) => {
-      if (!event?.detail?.uid || event.detail.uid === user.uid) {
+      if (!event?.detail?.uid || event.detail.uid === userId) {
         loadStats();
       }
     };
 
     const handleStorage = (event) => {
-      if (event.key === getStudyProgressKey(user.uid)) {
+      if (event.key === getStudyProgressKey(userId)) {
         loadStats();
       }
     };
@@ -85,7 +86,7 @@ const StudyProgressDashboard = () => {
       window.removeEventListener('study-progress-updated', handleUpdate);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [loadStats, user?.uid]);
+  }, [loadStats, userId]);
 
   const topicList = useMemo(() => (stats ? getTopicList(stats) : []), [stats]);
   const chartData = useMemo(

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { X, AlertTriangle, ShieldAlert, WarningTriangle } from 'lucide-react';
+import { X, ShieldAlert, TriangleAlert } from 'lucide-react';
 
 const focusableSelectors = [
   'a[href]',
@@ -62,6 +62,7 @@ const ConfirmationDialog = ({
     }
 
     previousActiveElementRef.current = document.activeElement;
+    const returnFocusElement = returnFocusRef?.current;
     document.body.style.overflow = 'hidden';
 
     const timer = window.setTimeout(() => {
@@ -71,8 +72,8 @@ const ConfirmationDialog = ({
     return () => {
       window.clearTimeout(timer);
       document.body.style.overflow = '';
-      if (returnFocusRef?.current?.focus) {
-        returnFocusRef.current.focus();
+      if (returnFocusElement?.focus) {
+        returnFocusElement.focus();
       } else if (previousActiveElementRef.current?.focus) {
         previousActiveElementRef.current.focus();
       }
@@ -163,7 +164,7 @@ const ConfirmationDialog = ({
                 {type === 'danger' ? (
                   <ShieldAlert className="h-5 w-5" aria-hidden="true" />
                 ) : (
-                  <WarningTriangle className="h-5 w-5" aria-hidden="true" />
+                  <TriangleAlert className="h-5 w-5" aria-hidden="true" />
                 )}
               </div>
               <div className="min-w-0">

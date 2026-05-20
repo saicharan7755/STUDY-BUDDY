@@ -4,7 +4,7 @@ import { AlertTriangle, RefreshCcw, Home } from 'lucide-react';
 const reportErrorToService = async (error, info) => {
   try {
     if (typeof window !== 'undefined' && window.navigator && window.fetch) {
-      await fetch('/.netlify/functions/log-error', {
+      await fetch('/api/log-error', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: error.message, stack: error.stack, componentStack: info.componentStack }),
@@ -27,7 +27,7 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     reportErrorToService(error, info);
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, info);
     }
   }

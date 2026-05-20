@@ -1,14 +1,13 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import PropTypes from 'prop-types';
 
 export const AuthContext = createContext(undefined);
 
 const AUTH_EVENT_KEY = 'cramAI_auth_event';
-const AUTH_CHECK_ENDPOINT = '/.netlify/functions/auth-me';
-const AUTH_LOGIN_ENDPOINT = '/.netlify/functions/auth-login';
-const AUTH_LOGOUT_ENDPOINT = '/.netlify/functions/auth-logout';
-const AUTH_REFRESH_ENDPOINT = '/.netlify/functions/auth-refresh';
-const TOKEN_REFRESH_MS = 12 * 60 * 1000; // refresh 3 minutes before expiry
+const AUTH_CHECK_ENDPOINT = '/api/auth-me';
+const AUTH_LOGIN_ENDPOINT = '/api/auth-login';
+const AUTH_LOGOUT_ENDPOINT = '/api/auth-logout';
+const AUTH_REFRESH_ENDPOINT = '/api/auth-refresh';
+const TOKEN_REFRESH_MS = 12 * 60 * 1000;
 
 const broadcastAuthState = () => {
   if (typeof window === 'undefined') return;
@@ -57,7 +56,7 @@ export const AuthProvider = ({ children }) => {
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current) {
-      window.clearTimeout(refreshTimerRef.current);
+      window.clearInterval(refreshTimerRef.current);
       refreshTimerRef.current = null;
     }
   }, []);
@@ -84,10 +83,10 @@ export const AuthProvider = ({ children }) => {
   const scheduleRefresh = useCallback(() => {
     clearRefreshTimer();
 
-    refreshTimerRef.current = window.setTimeout(async () => {
+    refreshTimerRef.current = window.setInterval(async () => {
       const ok = await refreshAuthToken();
-      if (ok) {
-        scheduleRefresh();
+      if (!ok) {
+        clearRefreshTimer();
       }
     }, TOKEN_REFRESH_MS);
   }, [clearRefreshTimer, refreshAuthToken]);
@@ -123,7 +122,7 @@ export const AuthProvider = ({ children }) => {
       setAuthError(error.message || 'Unable to verify auth status.');
       setAuthStatus('loading');
     }
-  }, [authStatus, scheduleRefresh]);
+  }, [authStatus, scheduleRefresh, setUser]);
 
   useEffect(() => {
     fetchAuthStatus();
@@ -188,7 +187,7 @@ export const AuthProvider = ({ children }) => {
         throw err;
       }
     },
-    [scheduleRefresh]
+    [scheduleRefresh, setUser]
   );
 
   const logout = useCallback(async () => {
@@ -205,26 +204,28 @@ export const AuthProvider = ({ children }) => {
       setAuthStatus('unauthenticated');
       broadcastAuthState();
     }
-  }, [clearRefreshTimer]);
+  }, [clearRefreshTimer, setUser]);
 
-  const signup = useCallback(async (email, password) => {
-    if (!email?.trim() || !password) {
-      throw new Error('Enter your email and a password.');
-    }
-    if (password.length < 8) {
-      throw new Error('Password must be at least 8 characters.');
-    }
+  const signup = useCallback(
+    async (email, password) => {
+      if (!email?.trim() || !password) {
+        throw new Error('Enter your email and a password.');
+      }
+      if (password.length < 8) {
+        throw new Error('Password must be at least 8 characters.');
+      }
 
-    // Demo-only sign-up flow. Replace with a real registration endpoint when available.
-    const newUser = { id: `user-${Date.now()}`, email: email.trim() };
-    setUser(newUser);
-    setAuthStatus('authenticated');
-    setAccountDisabled(false);
-    setAuthError(null);
-    scheduleRefresh();
-    broadcastAuthState();
-    return newUser;
-  }, [scheduleRefresh]);
+      const newUser = { id: `user-${Date.now()}`, email: email.trim() };
+      setUser(newUser);
+      setAuthStatus('authenticated');
+      setAccountDisabled(false);
+      setAuthError(null);
+      scheduleRefresh();
+      broadcastAuthState();
+      return newUser;
+    },
+    [scheduleRefresh, setUser]
+  );
 
   const retryAuth = useCallback(() => {
     setAuthError(null);
@@ -260,8 +261,4 @@ export const AuthProvider = ({ children }) => {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-AuthProvider.propTypes = {
-  children: PropTypes.node.isRequired,
 };

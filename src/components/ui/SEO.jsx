@@ -1,11 +1,11 @@
 import { Helmet } from 'react-helmet-async';
 
-const DEFAULT_SITE_URL = 'https://study-buddy.netlify.app';
-const DEFAULT_TITLE = 'Study Buddy - AI Powered Flashcard Generator';
+const DEFAULT_SITE_URL = 'https://cram-ai.vercel.app';
+const DEFAULT_TITLE = 'CRAM AI - AI Study Workspace';
 const DEFAULT_DESCRIPTION =
-  'Study Buddy is an AI powered flashcard generator that turns notes, PDFs, and study topics into smart flashcards, quizzes, and spaced repetition practice.';
+  'CRAM AI is an AI-powered study workspace that turns notes, PDFs, and topics into study plans, flashcards, quizzes, and spaced repetition practice.';
 const DEFAULT_IMAGE = '/og-default.svg';
-const SITE_NAME = 'Study Buddy';
+const SITE_NAME = 'CRAM AI';
 
 const getSiteUrl = () =>
   (import.meta.env.VITE_SITE_URL || DEFAULT_SITE_URL).replace(/\/$/, '');

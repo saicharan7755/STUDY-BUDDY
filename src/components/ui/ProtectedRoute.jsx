@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import BrandedLoadingScreen from './BrandedLoadingScreen';
@@ -30,10 +29,6 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children || <Outlet />;
-};
-
-ProtectedRoute.propTypes = {
-  children: PropTypes.node,
 };
 
 export default ProtectedRoute;
