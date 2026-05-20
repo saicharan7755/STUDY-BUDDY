@@ -1,7 +1,6 @@
 import React from 'react';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import clsx from 'clsx';
-
+import { clsx } from 'clsx';
 const PriorityBadge = ({ priority }) => {
   const config = {
     High: { icon: '🔥', color: 'text-danger bg-danger/10 border-danger/20' },
