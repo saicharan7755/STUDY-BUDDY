@@ -1,4 +1,6 @@
-import { sign } from 'jsonwebtoken';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { sign } = require('jsonwebtoken');
 
 function createCookie(name, value, maxAge) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
